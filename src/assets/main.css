@@ -1,16 +1,26 @@
 @import './base.css';
-/* src/assets/main.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+/* Ensure full-screen white background */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background-color: white;
 }
 
+/* Remove forced max-width/grid — it limits your layout */
+#app {
+  min-height: 100%;
+  width: 100%;
+  font-weight: normal;
+  padding: 0;
+  margin: 0;
+}
+
+/* Optional: remove or adjust link hover */
 a,
 .green {
   text-decoration: none;
@@ -25,16 +35,14 @@ a,
   }
 }
 
+/* 🔥 REMOVE these overrides — they break layout centering */
 @media (min-width: 1024px) {
   body {
-    display: flex;
-    place-items: center;
+    display: block; /* was flex, which broke vertical flow */
   }
 
   #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+    display: block; /* was grid, which caused the split screen */
+    padding: 0;
   }
 }
-
