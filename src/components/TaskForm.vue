@@ -10,9 +10,8 @@
           v-model="newTask.title"
           placeholder="e.g., Finish project report"
           required
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 text-gray-900"
+          /></div>
       <div>
         <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
         <textarea
@@ -20,9 +19,8 @@
           v-model="newTask.description"
           placeholder="Add more details about the task..."
           rows="3"
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        ></textarea>
-      </div>
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 text-gray-900"
+          ></textarea></div>
       <button
         type="submit"
         :disabled="taskStore.loading"
