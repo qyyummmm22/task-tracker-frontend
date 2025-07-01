@@ -13,7 +13,7 @@
             <th class="py-2 px-4 border-b text-left text-gray-700">Username</th>
             <th class="py-2 px-4 border-b text-left text-gray-700">Role</th>
             <th class="py-2 px-4 border-b text-left text-gray-700">Created At</th>
-            <th class="py-2 px-4 border-b text-center text-gray-700">Actions</th>
+            <th class="py-2 px-4 border-b text-left text-gray-700">Task Count</th> <th class="py-2 px-4 border-b text-center text-gray-700">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -21,6 +21,7 @@
             <td class="py-3 px-4 border-b text-gray-800">{{ user.username }}</td>
             <td class="py-3 px-4 border-b text-gray-600 capitalize">{{ user.role }}</td>
             <td class="py-3 px-4 border-b text-gray-600">{{ new Date(user.created_at).toLocaleDateString() }}</td>
+            <td class="py-3 px-4 border-b text-gray-800 font-semibold">{{ user.task_count }}</td> 
             <td class="py-3 px-4 border-b text-center">
               <button
                 @click="$emit('view-user-tasks', user.id, user.username)"
@@ -37,18 +38,16 @@
 </template>
 
 <script setup>
-// NO LONGER importing ref, onMounted, or useAuthStore here
-// Data (users) will be passed via props now
 const props = defineProps({
-  users: { // NEW: users array is now a prop
+  users: {
     type: Array,
     required: true,
   },
-  loading: { // NEW: loading status is now a prop
+  loading: {
     type: Boolean,
     default: false,
   },
-  error: { // NEW: error status is now a prop
+  error: {
     type: String,
     default: null,
   }

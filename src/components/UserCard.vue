@@ -6,11 +6,8 @@
     <h3 class="text-lg font-semibold text-gray-800">{{ user.username }}</h3>
     <p class="text-sm text-gray-600 capitalize">{{ user.role }}</p>
     <p class="text-xs text-gray-500">Joined: {{ new Date(user.created_at).toLocaleDateString() }}</p>
-    <button
-      @click=" console.log('UserCard: Attempting to emit for ID:', user.id, 'Username:', user.username); // <-- ADD THIS LINE
-        $emit('view-user-tasks', user.id, user.username);
-      "
-      
+    <p class="text-sm font-medium text-gray-700">Tasks: {{ user.task_count }}</p> <button
+      @click="console.log('UserCard button clicked for user:', user.id); $emit('view-user-tasks', user.id, user.username);"
       class="mt-auto px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 text-sm"
     >
       View Tasks
