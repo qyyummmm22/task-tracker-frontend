@@ -1,8 +1,8 @@
 // src/stores/taskStore.js
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
+import { useAuthStore } from '@/stores/authStore'; // <--- NEW: Import auth store
 
-// Base URL for your backend API
-const API_BASE_URL = 'http://localhost:3000/api/tasks'; // Make sure this matches your backend server's URL and port
+const API_BASE_URL = 'http://localhost:3000/api/tasks';
 
 export const useTaskStore = defineStore('task', {
   state: () => ({
@@ -11,13 +11,31 @@ export const useTaskStore = defineStore('task', {
     error: null,
   }),
   actions: {
+    // Helper function to get authenticated headers
+    getAuthHeaders() {
+      const authStore = useAuthStore();
+      if (authStore.token) {
+        return {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authStore.token}`,
+        };
+      }
+      return {
+        'Content-Type': 'application/json',
+      };
+    },
+
     async fetchTasks() {
       this.loading = true;
       this.error = null;
       try {
-        const response = await fetch(API_BASE_URL);
+        // Use authenticated headers
+        const response = await fetch(API_BASE_URL, {
+          headers: this.getAuthHeaders(), // <--- MODIFIED
+        });
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Network response was not ok');
         }
         this.tasks = await response.json();
       } catch (err) {
@@ -34,9 +52,7 @@ export const useTaskStore = defineStore('task', {
       try {
         const response = await fetch(API_BASE_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: this.getAuthHeaders(), // <--- MODIFIED
           body: JSON.stringify(newTask),
         });
         if (!response.ok) {
@@ -44,7 +60,7 @@ export const useTaskStore = defineStore('task', {
           throw new Error(errorData.message || 'Failed to add task');
         }
         const addedTask = await response.json();
-        this.tasks.unshift(addedTask); // Add to the beginning of the list
+        this.tasks.unshift(addedTask);
       } catch (err) {
         this.error = 'Failed to add task: ' + err.message;
         console.error('Add error:', err);
@@ -59,19 +75,17 @@ export const useTaskStore = defineStore('task', {
       try {
         const response = await fetch(`${API_BASE_URL}/${updatedTask.id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: this.getAuthHeaders(), // <--- MODIFIED
           body: JSON.stringify(updatedTask),
         });
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || 'Failed to update task');
         }
-        // Update the task in the local state
+        const responseData = await response.json();
         const index = this.tasks.findIndex(task => task.id === updatedTask.id);
         if (index !== -1) {
-          this.tasks[index] = { ...this.tasks[index], ...updatedTask };
+          this.tasks[index] = responseData;
         }
       } catch (err) {
         this.error = 'Failed to update task: ' + err.message;
@@ -87,10 +101,16 @@ export const useTaskStore = defineStore('task', {
       try {
         const response = await fetch(`${API_BASE_URL}/${id}`, {
           method: 'DELETE',
+          headers: this.getAuthHeaders(), // <--- MODIFIED
         });
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to delete task');
+           if (response.status !== 204) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || 'Failed to delete task');
+           } else {
+              // Handle 204 (No Content) response which won't have a body
+              throw new Error('Failed to delete task: Server responded with ' + response.status);
+           }
         }
         this.tasks = this.tasks.filter(task => task.id !== id);
       } catch (err) {
