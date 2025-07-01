@@ -1,7 +1,7 @@
 # My Task Tracker Application
 
 ![Task Tracker Screenshot Placeholder](https://via.placeholder.com/800x450?text=Task+Tracker+Screenshot)
-*(Replace this line with an actual screenshot of your application running in your browser)*
+
 
 ## Project Description
 
