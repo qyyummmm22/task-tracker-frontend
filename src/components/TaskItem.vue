@@ -6,8 +6,7 @@
         :checked="task.completed"
         @change="toggleCompletion"
         class="mr-3 h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-      />
-      <div :class="{ 'line-through text-gray-500': task.completed }">
+        v-if="task.user_id === authStore.user?.id" /><div :class="{ 'line-through text-gray-500': task.completed }">
         <h3 class="text-lg font-semibold text-gray-800">{{ task.title }}</h3>
         <p v-if="task.description" class="text-sm text-gray-600">{{ task.description }}</p>
 
@@ -68,9 +67,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useTaskStore } from '@/stores/taskStore';
-// The useAuthStore import is not strictly necessary for this simplified display logic,
-// but it doesn't hurt to keep it if you might use it for other TaskItem-related logic later.
-// import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/stores/authStore'; // ACTIVATE THIS IMPORT
 
 const props = defineProps({
   task: {
@@ -80,19 +77,18 @@ const props = defineProps({
 });
 
 const taskStore = useTaskStore();
-// const authStore = useAuthStore(); // Can keep or comment out if not needed
+const authStore = useAuthStore(); // ACTIVATE THIS INITIALIZATION
 
 const isEditing = ref(false);
 const editTitle = ref('');
-// Initialize editDescription to avoid undefined warnings if task.description is null
-const editDescription = ref(props.task.description || ''); 
+const editDescription = ref(props.task.description || ''); // Initialized correctly
 
 const toggleCompletion = () => {
   taskStore.updateTask({ ...props.task, completed: !props.task.completed });
 };
 
 const deleteThisTask = () => {
-  console.log('Delete button clicked! Task ID:', props.task.id); // <-- ADD THIS LINE
+  // Removed temporary console.log from here
   if (confirm('Are you sure you want to delete this task?')) {
     taskStore.deleteTask(props.task.id);
   }

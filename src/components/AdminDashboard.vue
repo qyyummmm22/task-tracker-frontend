@@ -1,68 +1,77 @@
 <template>
-  <div>
+  <div class="p-4 sm:p-8 bg-gray-100 min-h-screen">
     <!-- Admin Hub Navigation -->
-    <div v-if="currentAdminView === 'overview'" class="text-center mb-10">
-      <h2 class="text-3xl font-bold text-gray-800 mb-6">Admin Panel</h2>
-      <p class="text-lg text-gray-600 mb-8">Choose an action:</p>
-      <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+    <div v-if="currentAdminView === 'overview'" class="bg-white shadow-xl rounded-xl p-10 max-w-3xl mx-auto text-center mb-10 transition-all duration-300">
+      <h2 class="text-4xl font-extrabold text-gray-900 mb-4">Admin Panel</h2>
+      <p class="text-lg text-gray-600 mb-6">Choose an action:</p>
+      <div class="flex flex-col sm:flex-row justify-center gap-4">
         <button
           @click="currentAdminView = 'manage-users'"
-          class="px-8 py-4 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200 text-xl font-semibold"
+          class="px-6 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transform hover:scale-105 transition-all duration-300 text-lg font-semibold"
         >
           Manage User Accounts
         </button>
         <button
-          @click="currentAdminView = 'manage-tasks'; console.log('Admin view changed to:', currentAdminView);"
-          class="px-8 py-4 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200 text-xl font-semibold"
+          @click="currentAdminView = 'manage-tasks'"
+          class="px-6 py-3 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transform hover:scale-105 transition-all duration-300 text-lg font-semibold"
         >
           Manage User Tasks
         </button>
       </div>
     </div>
 
-    <!-- Back Button for Sub-Views -->
+    <!-- Context-Aware Back Button -->
     <button
       v-if="currentAdminView !== 'overview'"
-      @click="currentAdminView = 'overview'; viewingUserId = null; viewedUsername = '';"
-      class="mb-6 px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors duration-200"
+      @click="
+        if (viewingUserId) {
+          viewingUserId = null;
+          viewedUsername = '';
+        } else {
+          currentAdminView = 'overview';
+        }
+      "
+      class="flex items-center gap-2 mb-6 px-4 py-2 bg-white text-gray-800 rounded-lg shadow hover:bg-gray-100 transition-all duration-300 font-medium"
     >
-      &larr; Back to Admin Home
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+      </svg>
+      {{ backButtonText }}
     </button>
 
     <!-- Conditional Rendering of Sub-Views -->
-    <div v-if="currentAdminView === 'manage-users'">
+    <div v-if="currentAdminView === 'manage-users'" class="transition-opacity duration-500 ease-in-out">
       <ManageUsers />
     </div>
 
-    <div v-else-if="currentAdminView === 'manage-tasks'">
-      <div v-if="!viewingUserId">
+    <div v-else-if="currentAdminView === 'manage-tasks'" class="transition-all duration-500 ease-in-out">
+      <div v-if="!viewingUserId" class="bg-white rounded-xl shadow p-6">
         <!-- Controls for view mode and sorting -->
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
           <!-- View Toggle Buttons -->
-          <div>
+          <div class="flex rounded-md overflow-hidden border border-gray-300">
             <button
               @click="viewMode = 'table'"
-              :class="['px-4 py-2 rounded-l-md font-semibold text-sm', viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300']"
+              :class="['px-4 py-2 font-semibold text-sm', viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200']"
             >
               Table View
             </button>
             <button
               @click="viewMode = 'card'"
-              :class="['px-4 py-2 rounded-r-md font-semibold text-sm', viewMode === 'card' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300']"
+              :class="['px-4 py-2 font-semibold text-sm', viewMode === 'card' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200']"
             >
               Card View
             </button>
           </div>
 
           <!-- Sort Button -->
-          <div>
-            <button
-              @click="toggleSortOrder"
-              class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-semibold text-sm"
-            >
-              Sort by Date: {{ sortOrder === 'asc' ? 'Oldest First (Asc)' : 'Newest First (Desc)' }}
-            </button>
-          </div>
+          <button
+            @click="toggleSortOrder"
+            class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 font-semibold text-sm transition"
+          >
+            Sort by Date: {{ sortOrder === 'asc' ? 'Oldest First (Asc)' : 'Newest First (Desc)' }}
+          </button>
         </div>
 
         <!-- Display UserTable or UserCardGrid based on viewMode -->
@@ -82,14 +91,18 @@
         />
       </div>
 
-      <div v-else>
+      <div v-else class="bg-white shadow rounded-xl p-6">
         <!-- Show specific user's tasks -->
         <h2 class="text-2xl font-bold mb-4 text-gray-800 text-center">
           Tasks for <span class="text-blue-600">{{ viewedUsername }}</span>
         </h2>
-        
+
         <TaskForm :assign-to-user-id="viewingUserId" />
-        <TaskList :user-id-filter="viewingUserId" />
+<TaskList 
+  :user-id-filter="viewingUserId" 
+  :username-filter="viewedUsername" 
+/>
+
       </div>
     </div>
   </div>
@@ -107,13 +120,11 @@ import ManageUsers from './ManageUsers.vue';
 const authStore = useAuthStore();
 
 const currentAdminView = ref('overview');
-
 const users = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const viewMode = ref('table');
 const sortOrder = ref('desc');
-
 const viewingUserId = ref(null);
 const viewedUsername = ref('');
 
@@ -143,18 +154,12 @@ const fetchUsersForTaskOverview = async () => {
 
 const sortedUsers = computed(() => {
   if (!users.value || users.value.length === 0) return [];
-  
-  const sorted = [...users.value].sort((a, b) => {
+
+  return [...users.value].sort((a, b) => {
     const dateA = new Date(a.created_at);
     const dateB = new Date(b.created_at);
-    
-    if (sortOrder.value === 'asc') {
-      return dateA.getTime() - dateB.getTime();
-    } else {
-      return dateB.getTime() - dateA.getTime();
-    }
+    return sortOrder.value === 'asc' ? dateA - dateB : dateB - dateA;
   });
-  return sorted;
 });
 
 const toggleSortOrder = () => {
@@ -166,22 +171,19 @@ const showUserTasks = (userId, username) => {
   viewedUsername.value = username;
 };
 
-const clearUserTasks = () => {
-  viewingUserId.value = null;
-  viewedUsername.value = '';
-};
+const backButtonText = computed(() => {
+  if (viewingUserId.value) return 'Back to Users';
+  if (currentAdminView.value === 'manage-users' || currentAdminView.value === 'manage-tasks') return 'Back to Admin Home';
+  return 'Back';
+});
 
-// Watch currentAdminView to fetch data only when necessary
 watch(currentAdminView, (newView) => {
   if (newView === 'manage-tasks') {
-    fetchUsersForTaskOverview(); // Fetch users when entering task management
+    fetchUsersForTaskOverview();
   }
 });
 
-// MODIFIED: onMounted to correctly call the fetch function for task overview
 onMounted(() => {
-  // If the initial view is 'manage-tasks', fetch users for it.
-  // Otherwise, the watch effect will handle it when the button is clicked.
   if (currentAdminView.value === 'manage-tasks') {
     fetchUsersForTaskOverview();
   }
@@ -189,5 +191,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* No custom styles needed */
+/* Optional custom styles */
 </style>
