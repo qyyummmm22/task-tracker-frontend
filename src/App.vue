@@ -44,6 +44,7 @@ import LoginForm from './components/LoginForm.vue';
 import RegisterForm from './components/RegisterForm.vue';
 import AdminDashboard from './components/AdminDashboard.vue'; // NEW
 
+
 const authStore = useAuthStore();
 const authMode = ref('login'); // 'login' or 'register' - controls which form is shown
 </script>

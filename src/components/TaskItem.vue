@@ -11,9 +11,10 @@
         <h3 class="text-lg font-semibold text-gray-800">{{ task.title }}</h3>
         <p v-if="task.description" class="text-sm text-gray-600">{{ task.description }}</p>
 
-        <p v-if="task.owner_username" class="text-xs text-blue-500 mt-1">
-          Owned by: <span class="font-medium">{{ task.owner_username }}</span>
+        <p v-if="task.added_by_username" class="text-xs text-gray-500 mt-1">
+          Added by: <span class="font-medium">{{ task.added_by_username }}</span>
         </p>
+
       </div>
     </div>
     <div class="flex items-center space-x-2">
@@ -38,13 +39,13 @@
       <input
         v-model="editTitle"
         placeholder="Task Title"
-        class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+        class="block w-full px-3 py-2 border text-gray-800 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
       />
       <textarea
         v-model="editDescription"
         placeholder="Task Description (Optional)"
         rows="3"
-        class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+        class="block w-full px-3 py-2 border text-gray-800 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
       ></textarea>
       <div class="flex justify-end space-x-3">
         <button
@@ -67,6 +68,9 @@
 <script setup>
 import { ref } from 'vue';
 import { useTaskStore } from '@/stores/taskStore';
+// The useAuthStore import is not strictly necessary for this simplified display logic,
+// but it doesn't hurt to keep it if you might use it for other TaskItem-related logic later.
+// import { useAuthStore } from '@/stores/authStore';
 
 const props = defineProps({
   task: {
@@ -76,16 +80,19 @@ const props = defineProps({
 });
 
 const taskStore = useTaskStore();
+// const authStore = useAuthStore(); // Can keep or comment out if not needed
 
 const isEditing = ref(false);
 const editTitle = ref('');
-const editDescription = ref('');
+// Initialize editDescription to avoid undefined warnings if task.description is null
+const editDescription = ref(props.task.description || ''); 
 
 const toggleCompletion = () => {
   taskStore.updateTask({ ...props.task, completed: !props.task.completed });
 };
 
 const deleteThisTask = () => {
+  console.log('Delete button clicked! Task ID:', props.task.id); // <-- ADD THIS LINE
   if (confirm('Are you sure you want to delete this task?')) {
     taskStore.deleteTask(props.task.id);
   }

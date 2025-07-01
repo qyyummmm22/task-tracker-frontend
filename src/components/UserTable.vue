@@ -37,41 +37,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useAuthStore } from '@/stores/authStore';
-
-const authStore = useAuthStore();
-const users = ref([]);
-const loading = ref(false);
-const error = ref(null);
-
-const emit = defineEmits(['view-user-tasks']); // Emit event to view tasks for a specific user
-
-const fetchUsers = async () => {
-  loading.value = true;
-  error.value = null;
-  try {
-    const response = await fetch('http://localhost:3000/api/users', {
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to fetch users.');
-    }
-
-    users.value = await response.json();
-  } catch (err) {
-    error.value = err.message;
-    console.error('Error fetching users:', err);
-  } finally {
-    loading.value = false;
+// NO LONGER importing ref, onMounted, or useAuthStore here
+// Data (users) will be passed via props now
+const props = defineProps({
+  users: { // NEW: users array is now a prop
+    type: Array,
+    required: true,
+  },
+  loading: { // NEW: loading status is now a prop
+    type: Boolean,
+    default: false,
+  },
+  error: { // NEW: error status is now a prop
+    type: String,
+    default: null,
   }
-};
+});
 
-onMounted(fetchUsers);
+const emit = defineEmits(['view-user-tasks']);
 </script>
 
 <style scoped>
