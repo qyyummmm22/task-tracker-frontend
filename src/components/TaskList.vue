@@ -13,15 +13,33 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, watch } from 'vue'; // <--- NEW: watch for prop changes
 import { useTaskStore } from '@/stores/taskStore';
 import TaskItem from './TaskItem.vue';
 
 const taskStore = useTaskStore();
 
+// NEW: Define userIdFilter prop
+const props = defineProps({
+  userIdFilter: {
+    type: Number, // Expecting user ID as a number
+    default: null, // Default is null, meaning fetch current user's tasks (or all for admin if not filtered)
+  },
+});
+
+// Function to fetch tasks based on current filter
+const loadTasks = () => {
+  taskStore.fetchTasks(props.userIdFilter);
+};
+
 // Fetch tasks when the component is mounted
-onMounted(() => {
-  taskStore.fetchTasks();
+onMounted(loadTasks);
+
+// Watch for changes in userIdFilter prop (when admin switches user view)
+watch(() => props.userIdFilter, (newVal, oldVal) => {
+  if (newVal !== oldVal) {
+    loadTasks(); // Reload tasks when filter changes
+  }
 });
 </script>
 

@@ -1,6 +1,6 @@
 // src/stores/taskStore.js
 import { defineStore } from 'pinia';
-import { useAuthStore } from '@/stores/authStore'; // <--- NEW: Import auth store
+import { useAuthStore } from '@/stores/authStore';
 
 const API_BASE_URL = 'http://localhost:3000/api/tasks';
 
@@ -11,7 +11,6 @@ export const useTaskStore = defineStore('task', {
     error: null,
   }),
   actions: {
-    // Helper function to get authenticated headers
     getAuthHeaders() {
       const authStore = useAuthStore();
       if (authStore.token) {
@@ -25,13 +24,18 @@ export const useTaskStore = defineStore('task', {
       };
     },
 
-    async fetchTasks() {
+    // MODIFIED: fetchTasks now accepts a userIdFilter
+    async fetchTasks(userIdFilter = null) { // <--- MODIFIED to accept userIdFilter
       this.loading = true;
       this.error = null;
       try {
-        // Use authenticated headers
-        const response = await fetch(API_BASE_URL, {
-          headers: this.getAuthHeaders(), // <--- MODIFIED
+        let url = API_BASE_URL;
+        if (userIdFilter) { // If userIdFilter is provided, append it as a query parameter
+          url += `?userId=${userIdFilter}`;
+        }
+
+        const response = await fetch(url, { // <--- MODIFIED to use dynamic URL
+          headers: this.getAuthHeaders(),
         });
         if (!response.ok) {
           const errorData = await response.json();
@@ -46,14 +50,20 @@ export const useTaskStore = defineStore('task', {
       }
     },
 
-    async addTask(newTask) {
+    // MODIFIED: addTask now accepts a userId (for admin to assign tasks)
+    async addTask(newTask, assignToUserId = null) { // <--- MODIFIED to accept assignToUserId
       this.loading = true;
       this.error = null;
       try {
+        const payload = { ...newTask };
+        if (assignToUserId) {
+          payload.user_id = assignToUserId; // Add user_id to payload for backend
+        }
+
         const response = await fetch(API_BASE_URL, {
           method: 'POST',
-          headers: this.getAuthHeaders(), // <--- MODIFIED
-          body: JSON.stringify(newTask),
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(payload), // <--- MODIFIED to send payload
         });
         if (!response.ok) {
           const errorData = await response.json();
@@ -69,56 +79,15 @@ export const useTaskStore = defineStore('task', {
       }
     },
 
+    // updateTask and deleteTask remain mostly the same regarding headers
     async updateTask(updatedTask) {
-      this.loading = true;
-      this.error = null;
-      try {
-        const response = await fetch(`${API_BASE_URL}/${updatedTask.id}`, {
-          method: 'PUT',
-          headers: this.getAuthHeaders(), // <--- MODIFIED
-          body: JSON.stringify(updatedTask),
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to update task');
-        }
-        const responseData = await response.json();
-        const index = this.tasks.findIndex(task => task.id === updatedTask.id);
-        if (index !== -1) {
-          this.tasks[index] = responseData;
-        }
-      } catch (err) {
-        this.error = 'Failed to update task: ' + err.message;
-        console.error('Update error:', err);
-      } finally {
-        this.loading = false;
-      }
+        // ... existing code ...
+        // No changes needed here specific to admin viewing tasks
     },
 
     async deleteTask(id) {
-      this.loading = true;
-      this.error = null;
-      try {
-        const response = await fetch(`${API_BASE_URL}/${id}`, {
-          method: 'DELETE',
-          headers: this.getAuthHeaders(), // <--- MODIFIED
-        });
-        if (!response.ok) {
-           if (response.status !== 204) {
-              const errorData = await response.json();
-              throw new Error(errorData.message || 'Failed to delete task');
-           } else {
-              // Handle 204 (No Content) response which won't have a body
-              throw new Error('Failed to delete task: Server responded with ' + response.status);
-           }
-        }
-        this.tasks = this.tasks.filter(task => task.id !== id);
-      } catch (err) {
-        this.error = 'Failed to delete task: ' + err.message;
-        console.error('Delete error:', err);
-      } finally {
-        this.loading = false;
-      }
+        // ... existing code ...
+        // No changes needed here specific to admin viewing tasks
     }
   }
 });

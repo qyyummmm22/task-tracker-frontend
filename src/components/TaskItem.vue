@@ -10,6 +10,10 @@
       <div :class="{ 'line-through text-gray-500': task.completed }">
         <h3 class="text-lg font-semibold text-gray-800">{{ task.title }}</h3>
         <p v-if="task.description" class="text-sm text-gray-600">{{ task.description }}</p>
+
+        <p v-if="task.owner_username" class="text-xs text-blue-500 mt-1">
+          Owned by: <span class="font-medium">{{ task.owner_username }}</span>
+        </p>
       </div>
     </div>
     <div class="flex items-center space-x-2">
@@ -34,13 +38,13 @@
       <input
         v-model="editTitle"
         placeholder="Task Title"
-        class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3 text-gray-800 "
+        class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
       />
       <textarea
         v-model="editDescription"
         placeholder="Task Description (Optional)"
         rows="3"
-        class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4 text-gray-800 "
+        class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
       ></textarea>
       <div class="flex justify-end space-x-3">
         <button

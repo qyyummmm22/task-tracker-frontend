@@ -26,8 +26,10 @@
       </div>
 
       <div v-else>
-        <TaskForm class="mb-8" />
-        <TaskList />
+        <AdminDashboard v-if="authStore.isAdmin" /> <div v-else>
+          <TaskForm class="mb-8" />
+          <TaskList />
+        </div>
       </div>
     </div>
   </div>
@@ -38,8 +40,9 @@ import { ref } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import TaskForm from './components/TaskForm.vue';
 import TaskList from './components/TaskList.vue';
-import LoginForm from './components/LoginForm.vue'; // NEW
-import RegisterForm from './components/RegisterForm.vue'; // NEW
+import LoginForm from './components/LoginForm.vue';
+import RegisterForm from './components/RegisterForm.vue';
+import AdminDashboard from './components/AdminDashboard.vue'; // NEW
 
 const authStore = useAuthStore();
 const authMode = ref('login'); // 'login' or 'register' - controls which form is shown
