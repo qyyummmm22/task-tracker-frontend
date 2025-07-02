@@ -16,13 +16,20 @@
           Added by: <span class="font-medium">{{ task.added_by_username }}</span>
         </p>
 
+        <div class="flex items-center space-x-4 text-xs text-gray-600 mt-1">
+          <p v-if="task.due_date">Due: {{ formatDate(task.due_date) }}</p>
+          <p :class="priorityClass(task.priority)">Priority: {{ task.priority.charAt(0).toUpperCase() + task.priority.slice(1) }}</p>
+        </div>
+
         <div class="mt-2 text-sm">
           <div v-if="task.document_path">
-            <p class="text-gray-600">Document: 
+            <p class="text-gray-600">Document:
               <span
-    @click="handleDownloadDocument"
-    :class="['text-blue-600 hover:underline cursor-pointer', downloadLoading ? 'opacity-50 cursor-not-allowed' : '']" :title="task.document_path">
-    {{ downloadLoading ? 'Downloading...' : (task.document_path.split('-').pop() || task.document_path) }} (Download) </span>
+                @click="handleDownloadDocument"
+                :class="['text-blue-600 hover:underline cursor-pointer', downloadLoading ? 'opacity-50 cursor-not-allowed' : '']"
+                :title="task.document_path">
+                {{ downloadLoading ? 'Downloading...' : (task.document_path.split('-').pop() || task.document_path) }} (Download)
+              </span>
               <span v-if="downloadError" class="text-red-500 text-xs ml-2">{{ downloadError }}</span>
             </p>
           </div>
@@ -31,7 +38,7 @@
           </div>
 
           <div v-if="task.user_id === authStore.user?.id" class="mt-2 flex items-center space-x-2">
-            <input type="file" ref="fileInput" @change="handleFileChange" accept="application/pdf" class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+            <input type="file" ref="fileInput" @change="handleFileChange" accept="application/pdf" class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
             <button
               @click="uploadDocument"
               :disabled="!selectedFile || uploadLoading"
@@ -42,52 +49,38 @@
             <p v-if="uploadError" class="text-red-500 text-xs">{{ uploadError }}</p>
           </div>
         </div>
-
       </div>
     </div>
+
     <div class="flex items-center space-x-2">
-      <button
-    @click="startEdit"
-    :disabled="uploadLoading || downloadLoading" class="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
->
-    Edit
-</button>
-      <button
-    @click="deleteThisTask"
-    :disabled="uploadLoading || downloadLoading" class="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
->
-    Delete
-</button>
+      <button @click="startEdit" :disabled="uploadLoading || downloadLoading" class="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">Edit</button>
+      <button @click="deleteThisTask" :disabled="uploadLoading || downloadLoading" class="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">Delete</button>
     </div>
   </div>
 
   <div v-if="isEditing" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
     <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
       <h2 class="text-2xl font-bold mb-4 text-gray-800">Edit Task</h2>
-      <input
-        v-model="editTitle"
-        placeholder="Task Title"
-        class="block w-full px-3 py-2 border text-gray-800 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-      />
-      <textarea
-        v-model="editDescription"
-        placeholder="Task Description (Optional)"
-        rows="3"
-        class="block w-full px-3 py-2 border text-gray-800 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
-      ></textarea>
+      <input v-model="editTitle" placeholder="Task Title" class="block w-full px-3 py-2 border text-gray-800 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3" />
+      <textarea v-model="editDescription" placeholder="Task Description (Optional)" rows="3" class="block w-full px-3 py-2 border text-gray-800 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"></textarea>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Due Date (Optional)</label>
+        <input type="datetime-local" v-model="editDueDate" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 mb-4" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+        <select v-model="editPriority" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 mb-4">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+
       <div class="flex justify-end space-x-3">
-        <button
-          @click="cancelEdit"
-          class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors duration-200"
-        >
-          Cancel
-        </button>
-        <button
-          @click="saveEdit"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
-        >
-          Save Changes
-        </button>
+        <button @click="cancelEdit" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors duration-200">Cancel</button>
+        <button @click="saveEdit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200">Save Changes</button>
       </div>
     </div>
   </div>
@@ -97,23 +90,21 @@
 import { ref } from 'vue';
 import { useTaskStore } from '@/stores/taskStore';
 import { useAuthStore } from '@/stores/authStore';
-import { useToast } from "vue-toastification"; // NEW
-
+import { useToast } from "vue-toastification";
 
 const props = defineProps({
-  task: {
-    type: Object,
-    required: true,
-  },
+  task: Object,
 });
 
 const taskStore = useTaskStore();
 const authStore = useAuthStore();
-const toast = useToast(); // NEW
+const toast = useToast();
 
 const isEditing = ref(false);
 const editTitle = ref('');
-const editDescription = ref(props.task.description || '');
+const editDescription = ref('');
+const editDueDate = ref('');
+const editPriority = ref('medium');
 
 const selectedFile = ref(null);
 const fileInput = ref(null);
@@ -130,19 +121,19 @@ const handleFileChange = (event) => {
 
 const uploadDocument = async () => {
   if (!selectedFile.value) {
-   toast.error('Please select a file first.');
+    toast.error('Please select a file first.');
     return;
   }
   if (selectedFile.value.type !== 'application/pdf') {
-    toast.error('Only PDF files are allowed.'); // MODIFIED
+    toast.error('Only PDF files are allowed.');
     selectedFile.value = null;
-    if (fileInput.value) fileInput.value.value = '';
+    fileInput.value && (fileInput.value.value = '');
     return;
   }
   if (selectedFile.value.size > 5 * 1024 * 1024) {
-    toast.error('File size exceeds 5MB limit.'); // MODIFIED
+    toast.error('File size exceeds 5MB limit.');
     selectedFile.value = null;
-    if (fileInput.value) fileInput.value.value = '';
+    fileInput.value && (fileInput.value.value = '');
     return;
   }
 
@@ -151,16 +142,15 @@ const uploadDocument = async () => {
   try {
     const data = await taskStore.uploadTaskPdf(props.task.id, selectedFile.value);
     if (data) {
-       toast.success('Document uploaded successfully!'); // MODIFIED
-      // Update the local task object's document_path so UI reflects immediately
+      toast.success('Document uploaded successfully!');
       props.task.document_path = data.document_path;
       selectedFile.value = null;
-      if (fileInput.value) fileInput.value.value = '';
+      fileInput.value && (fileInput.value.value = '');
     } else {
-      toast.error(taskStore.error || 'Upload failed.'); // MODIFIED
+      toast.error(taskStore.error || 'Upload failed.');
     }
   } catch (err) {
-    toast.error(err.message || 'An unexpected error occurred during upload.'); // MODIFIED
+    toast.error(err.message || 'An unexpected error occurred during upload.');
   } finally {
     uploadLoading.value = false;
   }
@@ -172,22 +162,40 @@ const handleDownloadDocument = async () => {
   try {
     const blob = await taskStore.downloadTaskPdf(props.task.id);
     if (blob) {
-      const url = window.URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', props.task.document_path);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    toast.success('Document download initiated.'); // MODIFIED
+      URL.revokeObjectURL(url);
+      toast.success('Document download initiated.');
     } else {
-      toast.error(taskStore.error || 'Download failed.'); // MODIFIED
+      toast.error(taskStore.error || 'Download failed.');
     }
   } catch (err) {
-    toast.error(err.message || 'An unexpected error occurred during download.'); // MODIFIED
+    toast.error(err.message || 'An unexpected error occurred during download.');
+  } finally {
     downloadLoading.value = false;
   }
+};
+
+const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    // Ensure the date string is parsed as UTC before converting to local display
+    // If dateString from MySQL is 'YYYY-MM-DD HH:MM:SS', appending 'Z' makes new Date() interpret it as UTC.
+    const date = new Date(dateString.endsWith('Z') ? dateString : `${dateString}Z`); // <--- MODIFIED
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+    return date.toLocaleDateString(undefined, options);
+};
+
+const priorityClass = (priority) => {
+  return {
+    low: 'text-green-600 font-medium',
+    medium: 'text-yellow-600 font-medium',
+    high: 'text-red-600 font-medium',
+  }[priority] || 'text-gray-600';
 };
 
 const toggleCompletion = () => {
@@ -203,27 +211,50 @@ const deleteThisTask = () => {
 const startEdit = () => {
   editTitle.value = props.task.title;
   editDescription.value = props.task.description || '';
+  editDueDate.value = props.task.due_date ? new Date(props.task.due_date).toISOString().slice(0, 16) : '';
+  editPriority.value = props.task.priority || 'medium';
   isEditing.value = true;
 };
 
-const saveEdit = () => {
-  if (editTitle.value.trim() === '') {
-    alert('Task title cannot be empty.');
+const saveEdit = async () => {
+  if (!editTitle.value.trim()) {
+    toast.error('Task title cannot be empty.');
     return;
   }
-  taskStore.updateTask({
+
+  const formattedDueDate = editDueDate.value
+    ? new Date(editDueDate.value).toISOString().slice(0, 19).replace('T', ' ')
+    : null;
+
+  const updatedData = {
     id: props.task.id,
     title: editTitle.value.trim(),
     description: editDescription.value.trim(),
-  });
-  isEditing.value = false;
+    due_date: formattedDueDate,
+    priority: editPriority.value,
+  };
+
+  const success = await taskStore.updateTask(updatedData);
+  if (success) {
+    isEditing.value = false;
+  } else {
+    toast.error('Failed to save changes.');
+  }
 };
 
 const cancelEdit = () => {
   isEditing.value = false;
 };
-</script>
 
+// const formatDate = (dateString) => {
+//     if (!dateString) return 'N/A';
+//     // Ensure the date string is parsed as UTC before converting to local display
+//     // If dateString from MySQL is 'YYYY-MM-DD HH:MM:SS', appending 'Z' makes new Date() interpret it as UTC.
+//     const date = new Date(dateString.endsWith('Z') ? dateString : `${dateString}Z`); // <--- MODIFIED
+//     const options = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+//     return date.toLocaleDateString(undefined, options);
+// };
+</script>
 <style scoped>
-/* No specific scoped styles needed if using Tailwind extensively */
+/* Add any component-specific styles here */
 </style>

@@ -8,27 +8,26 @@
           type="text"
           id="login-username"
           v-model="username"
-          placeholder="Your username"
+          @input="validateUsername" placeholder="Your username"
           required
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 text-gray-900"
-        />
-      </div>
+          class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 text-gray-900"
+          :class="{'border-red-500': usernameError}" />
+        <p v-if="usernameError" class="text-red-500 text-xs mt-1">{{ usernameError }}</p> </div>
       <div>
         <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
         <input
           type="password"
           id="login-password"
           v-model="password"
-          placeholder="Your password"
+          @input="validatePassword" placeholder="Your password"
           required
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 text-gray-900"
-        />
-      </div>
+          class="block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 text-gray-900"
+          :class="{'border-red-500': passwordError}" />
+        <p v-if="passwordError" class="text-red-500 text-xs mt-1">{{ passwordError }}</p> </div>
 
       <button
         type="submit"
-        :disabled="authStore.loading"
-        class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        :disabled="authStore.loading || !isFormValid" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {{ authStore.loading ? 'Logging in...' : 'Login' }}
       </button>
@@ -41,29 +40,74 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue'; // NEW: computed
 import { useAuthStore } from '@/stores/authStore';
-import { useToast } from "vue-toastification"; // NEW
+import { useToast } from "vue-toastification";
 
 const authStore = useAuthStore();
+const toast = useToast();
+
 const username = ref('');
 const password = ref('');
-const toast = useToast(); // NEW
 
+// NEW: Validation error messages
+const usernameError = ref('');
+const passwordError = ref('');
 
-const emit = defineEmits(['toggle-mode']); // Emit event to switch between login/register
+const emit = defineEmits(['toggle-mode']);
+
+// NEW: Validation methods
+const validateUsername = () => {
+  if (!username.value) {
+    usernameError.value = 'Username is required.';
+  } else {
+    usernameError.value = '';
+  }
+  return !usernameError.value;
+};
+
+const validatePassword = () => {
+  if (!password.value) {
+    passwordError.value = 'Password is required.';
+  } else {
+    passwordError.value = '';
+  }
+  return !passwordError.value;
+};
+
+// NEW: Overall form validation
+const validateForm = () => {
+  const isUsernameValid = validateUsername();
+  const isPasswordValid = validatePassword();
+  return isUsernameValid && isPasswordValid;
+};
+
+// NEW: Computed property to check if form is generally valid
+const isFormValid = computed(() => {
+  // Initial check ensures errors are not shown prematurely
+  if (!username.value || !password.value) return false;
+  
+  // If fields have content, then check against validation rules
+  return !usernameError.value && !passwordError.value;
+});
 
 const handleLogin = async () => {
-  const result = await authStore.login(username.value, password.value); // MODIFIED
+  // NEW: Perform validation before sending to backend
+  if (!validateForm()) {
+    toast.error("Please fill in all required fields.");
+    return;
+  }
+
+  const result = await authStore.login(username.value, password.value);
   if (result.success) {
-    toast.success(result.message); // MODIFIED: Use toast
-    // Login successful, app.vue will react to isAuthenticated
+    toast.success(result.message);
+    // Clear validation errors after successful submission
+    usernameError.value = '';
+    passwordError.value = '';
   } else {
-    toast.error(result.message); // MODIFIED: Use toast for error
+    toast.error(result.message);
   }
 };
 </script>
 
-<style scoped>
-/* Scoped styles specific to LoginForm */
-</style>
+<style scoped> /* ... */ </style>
