@@ -19,12 +19,10 @@
         <div class="mt-2 text-sm">
           <div v-if="task.document_path">
             <p class="text-gray-600">Document: 
-              <span 
-                @click="handleDownloadDocument" 
-                class="text-blue-600 hover:underline cursor-pointer"
-                :title="task.document_path">
-                {{ task.document_path.split('-').pop() || task.document_path }} (Download)
-              </span>
+              <span
+    @click="handleDownloadDocument"
+    :class="['text-blue-600 hover:underline cursor-pointer', downloadLoading ? 'opacity-50 cursor-not-allowed' : '']" :title="task.document_path">
+    {{ downloadLoading ? 'Downloading...' : (task.document_path.split('-').pop() || task.document_path) }} (Download) </span>
               <span v-if="downloadError" class="text-red-500 text-xs ml-2">{{ downloadError }}</span>
             </p>
           </div>
@@ -49,17 +47,17 @@
     </div>
     <div class="flex items-center space-x-2">
       <button
-        @click="startEdit"
-        class="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200"
-      >
-        Edit
-      </button>
+    @click="startEdit"
+    :disabled="uploadLoading || downloadLoading" class="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+>
+    Edit
+</button>
       <button
-        @click="deleteThisTask"
-        class="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
-      >
-        Delete
-      </button>
+    @click="deleteThisTask"
+    :disabled="uploadLoading || downloadLoading" class="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+>
+    Delete
+</button>
     </div>
   </div>
 

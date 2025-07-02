@@ -4,7 +4,10 @@
     
     <p v-if="loading" class="text-center text-gray-600">Loading users...</p>
     <p v-else-if="error" class="text-center text-red-500">{{ error }}</p>
-    <p v-else-if="users.length === 0" class="text-center text-gray-500 p-4">No users found.</p>
+    <div v-else-if="users.length === 0" class="text-center py-12 text-gray-500">
+      <p class="text-2xl font-semibold mb-2">🚫 No user accounts to manage!</p>
+      <p class="text-md">Register new users to see them here.</p>
+    </div>
 
     <div v-else class="overflow-x-auto">
       <table class="min-w-full bg-white border border-gray-200">
@@ -27,13 +30,12 @@
             <td class="py-3 px-4 border-b text-gray-800 font-semibold">{{ user.task_count }}</td>
             <td class="py-3 px-4 border-b text-center">
               <button
-                @click="deleteUser(user.id, user.username)"
-                :disabled="user.id === authStore.user?.id || loading"
-                :class="['px-3 py-1 text-white rounded-md transition-colors duration-200 text-sm',
-                         user.id === authStore.user?.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600']"
-              >
-                Delete
-              </button>
+        @click="deleteUser(user.id, user.username)"
+        :disabled="user.id === authStore.user?.id || loading" :class="['px-3 py-1 text-white rounded-md transition-colors duration-200 text-sm',
+                 user.id === authStore.user?.id || loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600']"
+    >
+        Delete
+    </button>
             </td>
           </tr>
         </tbody>
