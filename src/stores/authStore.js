@@ -18,7 +18,7 @@ export const useAuthStore = defineStore('auth', {
   },
   actions: {
     // Action for user registration
-    async register(username, password, role = 'staff') { // Default role is staff
+    async register(username, password, role = 'staff') {
       this.loading = true;
       this.error = null;
       try {
@@ -30,7 +30,8 @@ export const useAuthStore = defineStore('auth', {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.message || 'Registration failed.');
+          // Return error message for toast
+          return { success: false, message: errorData.message || 'Registration failed.' };
         }
 
         const data = await response.json();
@@ -39,17 +40,18 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
 
-        return true; // Indicate success
+        // Return success message for toast
+        return { success: true, message: data.message || 'User registered successfully!' };
       } catch (err) {
         this.error = err.message;
         console.error('Registration error:', err);
-        return false; // Indicate failure
+        // Return error message for toast
+        return { success: false, message: err.message || 'An unexpected registration error occurred.' };
       } finally {
         this.loading = false;
       }
     },
 
-    // Action for user login
     async login(username, password) {
       this.loading = true;
       this.error = null;
@@ -62,7 +64,8 @@ export const useAuthStore = defineStore('auth', {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.message || 'Login failed.');
+          // Return error message for toast
+          return { success: false, message: errorData.message || 'Login failed.' };
         }
 
         const data = await response.json();
@@ -71,27 +74,27 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
 
-        return true; // Indicate success
+        // Return success message for toast
+        return { success: true, message: data.message || 'Logged in successfully!' };
       } catch (err) {
         this.error = err.message;
         console.error('Login error:', err);
-        return false; // Indicate failure
+        // Return error message for toast
+        return { success: false, message: err.message || 'An unexpected login error occurred.' };
       } finally {
         this.loading = false;
       }
     },
 
-    // Action for user logout
     logout() {
       this.user = null;
       this.token = null;
       localStorage.removeItem('user');
       localStorage.removeItem('token');
-      this.error = null; // Clear any previous errors
-
-      // Optionally, clear tasks from the taskStore on logout
+      this.error = null;
       const taskStore = useTaskStore();
       taskStore.tasks = [];
+      // No need to return anything for logout here, App.vue can handle it.
     }
   },
 });

@@ -99,6 +99,8 @@
 import { ref } from 'vue';
 import { useTaskStore } from '@/stores/taskStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useToast } from "vue-toastification"; // NEW
+
 
 const props = defineProps({
   task: {
@@ -109,6 +111,7 @@ const props = defineProps({
 
 const taskStore = useTaskStore();
 const authStore = useAuthStore();
+const toast = useToast(); // NEW
 
 const isEditing = ref(false);
 const editTitle = ref('');
@@ -129,17 +132,17 @@ const handleFileChange = (event) => {
 
 const uploadDocument = async () => {
   if (!selectedFile.value) {
-    uploadError.value = 'Please select a file first.';
+   toast.error('Please select a file first.');
     return;
   }
   if (selectedFile.value.type !== 'application/pdf') {
-    uploadError.value = 'Only PDF files are allowed.';
+    toast.error('Only PDF files are allowed.'); // MODIFIED
     selectedFile.value = null;
     if (fileInput.value) fileInput.value.value = '';
     return;
   }
   if (selectedFile.value.size > 5 * 1024 * 1024) {
-    uploadError.value = 'File size exceeds 5MB limit.';
+    toast.error('File size exceeds 5MB limit.'); // MODIFIED
     selectedFile.value = null;
     if (fileInput.value) fileInput.value.value = '';
     return;
@@ -150,16 +153,16 @@ const uploadDocument = async () => {
   try {
     const data = await taskStore.uploadTaskPdf(props.task.id, selectedFile.value);
     if (data) {
-      alert('Document uploaded successfully!');
+       toast.success('Document uploaded successfully!'); // MODIFIED
       // Update the local task object's document_path so UI reflects immediately
       props.task.document_path = data.document_path;
       selectedFile.value = null;
       if (fileInput.value) fileInput.value.value = '';
     } else {
-      uploadError.value = taskStore.error || 'Upload failed.';
+      toast.error(taskStore.error || 'Upload failed.'); // MODIFIED
     }
   } catch (err) {
-    uploadError.value = err.message || 'An unexpected error occurred during upload.';
+    toast.error(err.message || 'An unexpected error occurred during upload.'); // MODIFIED
   } finally {
     uploadLoading.value = false;
   }
@@ -179,12 +182,12 @@ const handleDownloadDocument = async () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+    toast.success('Document download initiated.'); // MODIFIED
     } else {
-      downloadError.value = taskStore.error || 'Download failed.';
+      toast.error(taskStore.error || 'Download failed.'); // MODIFIED
     }
   } catch (err) {
-    downloadError.value = err.message || 'An unexpected error occurred during download.';
-  } finally {
+    toast.error(err.message || 'An unexpected error occurred during download.'); // MODIFIED
     downloadLoading.value = false;
   }
 };

@@ -45,11 +45,13 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
+import { useToast } from "vue-toastification"; // NEW
 
 const authStore = useAuthStore();
 const users = ref([]);
 const loading = ref(false);
 const error = ref(null);
+const toast = useToast(); // NEW
 
 const fetchUsers = async () => {
   loading.value = true;
@@ -77,7 +79,7 @@ const fetchUsers = async () => {
 
 const deleteUser = async (userId, username) => {
   if (userId === authStore.user?.id) {
-    alert("You cannot delete your own account from this panel. Please ask another admin or delete directly via database if absolutely necessary.");
+    toast.error("You cannot delete your own account from this panel."); // MODIFIED: Use toast
     return;
   }
   if (!confirm(`Are you sure you want to delete user "${username}" (ID: ${userId})? This will also delete all their tasks.`)) {
@@ -103,11 +105,12 @@ const deleteUser = async (userId, username) => {
     
     // If successful (204), remove user from local list
     users.value = users.value.filter(user => user.id !== userId);
-    alert(`User "${username}" deleted successfully.`);
+    toast.success(`User "${username}" deleted successfully.`); // MODIFIED: Use toast
 
   } catch (err) {
     error.value = err.message;
     console.error('Error deleting user:', err);
+    toast.error(`Failed to delete user: ${err.message}`); // MODIFIED: Use toast for error
   } finally {
     loading.value = false;
   }

@@ -54,8 +54,10 @@
 <script setup>
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
+import { useToast } from "vue-toastification"; // NEW 
 
 const authStore = useAuthStore();
+const toast = useToast(); // NEW
 const username = ref('');
 const password = ref('');
 const role = ref('staff'); // Default to staff
@@ -63,13 +65,14 @@ const role = ref('staff'); // Default to staff
 const emit = defineEmits(['toggle-mode']); // Emit event to switch between login/register
 
 const handleRegister = async () => {
-  const success = await authStore.register(username.value, password.value, role.value);
-  if (success) {
-    alert('Registration successful! You are now logged in.');
-    // Optionally, clear form or redirect
+  const result = await authStore.register(username.value, password.value, role.value); // MODIFIED
+  if (result.success) {
+    toast.success(result.message); // MODIFIED: Use toast
     username.value = '';
     password.value = '';
     role.value = 'staff';
+  } else {
+    toast.error(result.message); // MODIFIED: Use toast for error
   }
 };
 </script>

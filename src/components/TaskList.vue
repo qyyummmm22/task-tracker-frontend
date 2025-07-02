@@ -5,8 +5,7 @@
       Your Tasks
     </h2>
 
-    <p v-if="taskStore.loading" class="text-center text-gray-600">Loading tasks...</p>
-    <p v-else-if="taskStore.error" class="text-center text-red-500">{{ taskStore.error }}</p>
+   <p v-if="taskStore.loading" class="text-center text-gray-600 py-4">Loading tasks...</p> <p v-else-if="taskStore.error" class="text-center text-red-500">{{ taskStore.error }}</p>
     <div v-else-if="taskStore.tasks.length === 0" class="text-center text-gray-500 p-4">
       No tasks found. Add a new task above!
     </div>

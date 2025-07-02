@@ -43,17 +43,23 @@
 <script setup>
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
+import { useToast } from "vue-toastification"; // NEW
 
 const authStore = useAuthStore();
 const username = ref('');
 const password = ref('');
+const toast = useToast(); // NEW
+
 
 const emit = defineEmits(['toggle-mode']); // Emit event to switch between login/register
 
 const handleLogin = async () => {
-  const success = await authStore.login(username.value, password.value);
-  if (success) {
+  const result = await authStore.login(username.value, password.value); // MODIFIED
+  if (result.success) {
+    toast.success(result.message); // MODIFIED: Use toast
     // Login successful, app.vue will react to isAuthenticated
+  } else {
+    toast.error(result.message); // MODIFIED: Use toast for error
   }
 };
 </script>
