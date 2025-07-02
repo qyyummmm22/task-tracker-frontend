@@ -120,6 +120,16 @@ import ManageUsers from './ManageUsers.vue';
 const authStore = useAuthStore();
 
 const currentAdminView = ref('overview');
+
+// CRITICAL DEBUG LOGS:
+console.log('AdminDashboard: Initializing currentAdminView to:', currentAdminView.value);
+onMounted(() => {
+  console.log('AdminDashboard: onMounted - currentAdminView is:', currentAdminView.value);
+});
+// Watch for any changes to currentAdminView
+watch(currentAdminView, (newView, oldView) => {
+  console.log(`AdminDashboard: currentAdminView CHANGED from '${oldView}' to '${newView}'.`);
+})
 const users = ref([]);
 const loading = ref(false);
 const error = ref(null);

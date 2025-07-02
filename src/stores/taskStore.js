@@ -29,17 +29,45 @@ export const useTaskStore = defineStore('task', {
       return contentType ? { 'Content-Type': contentType } : {};
     },
 
-    async fetchTasks(userIdFilter = null) {
+    async fetchTasks(filters = {}) { // <--- MODIFIED to accept filters object
+      console.log('taskStore: fetchTasks received argument:'); // <--- NEW LOG
+      console.log('  Type of filters:', typeof filters);       // <--- NEW LOG
+      console.log('  Value of filters:', filters);             // <--- NEW LOG
+
       this.loading = true;
       this.error = null;
       try {
         let url = API_BASE_URL;
-        if (userIdFilter) {
-          url += `?userId=${userIdFilter}`;
+        const queryParams = [];
+
+        // userIdFilter (for admin's specific user view) is now part of filters
+        if (filters.userIdFilter) {
+          queryParams.push(`userId=${filters.userIdFilter}`);
+        }
+
+        // NEW: Add other filter parameters
+        if (filters.search) {
+          queryParams.push(`search=${encodeURIComponent(filters.search)}`);
+        }
+        if (filters.completed !== undefined && filters.completed !== null) {
+          queryParams.push(`completed=${filters.completed}`);
+        }
+        if (filters.priority) {
+          queryParams.push(`priority=${filters.priority}`);
+        }
+        if (filters.startDate) {
+          queryParams.push(`startDate=${filters.startDate}`); // Expecting YYYY-MM-DD HH:MM:SS format
+        }
+        if (filters.endDate) {
+          queryParams.push(`endDate=${filters.endDate}`); // Expecting YYYY-MM-DD HH:MM:SS format
+        }
+
+        if (queryParams.length > 0) {
+          url += `?${queryParams.join('&')}`;
         }
 
         const response = await fetch(url, {
-          headers: this.getAuthHeaders(), // Default 'application/json'
+          headers: this.getAuthHeaders(),
         });
         if (!response.ok) {
           const errorData = await response.json();
