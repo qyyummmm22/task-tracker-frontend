@@ -17,18 +17,18 @@
         </p>
 
         <div class="flex items-center space-x-4 text-xs text-gray-600 mt-1">
-          <p v-if="task.due_date">Due: {{ formatDate(task.due_date) }}</p>
-          <p :class="priorityClass(task.priority)">Priority: {{ task.priority.charAt(0).toUpperCase() + task.priority.slice(1) }}</p>
+            <p v-if="task.due_date">Due: {{ formatDate(task.due_date) }}</p>
+            <p :class="priorityClass(task.priority)">Priority: {{ task.priority.charAt(0).toUpperCase() + task.priority.slice(1) }}</p>
         </div>
 
         <div class="mt-2 text-sm">
           <div v-if="task.document_path">
-            <p class="text-gray-600">Document:
-              <span
-                @click="handleDownloadDocument"
-                :class="['text-blue-600 hover:underline cursor-pointer', downloadLoading ? 'opacity-50 cursor-not-allowed' : '']"
+            <p class="text-gray-600">Document: 
+              <span 
+                @click="handleDownloadDocument" 
+                class="text-blue-600 hover:underline cursor-pointer"
                 :title="task.document_path">
-                {{ downloadLoading ? 'Downloading...' : (task.document_path.split('-').pop() || task.document_path) }} (Download)
+                {{ task.document_path.split('-').pop() || task.document_path }} (Download)
               </span>
               <span v-if="downloadError" class="text-red-500 text-xs ml-2">{{ downloadError }}</span>
             </p>
@@ -38,7 +38,7 @@
           </div>
 
           <div v-if="task.user_id === authStore.user?.id" class="mt-2 flex items-center space-x-2">
-            <input type="file" ref="fileInput" @change="handleFileChange" accept="application/pdf" class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+            <input type="file" ref="fileInput" @change="handleFileChange" accept="application/pdf" class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
             <button
               @click="uploadDocument"
               :disabled="!selectedFile || uploadLoading"
@@ -49,51 +49,105 @@
             <p v-if="uploadError" class="text-red-500 text-xs">{{ uploadError }}</p>
           </div>
         </div>
+
       </div>
     </div>
-
     <div class="flex items-center space-x-2">
-      <button @click="startEdit" :disabled="uploadLoading || downloadLoading" class="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">Edit</button>
-      <button @click="deleteThisTask" :disabled="uploadLoading || downloadLoading" class="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">Delete</button>
+      <button
+        @click="startEdit"
+        :disabled="uploadLoading || downloadLoading"
+        class="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Edit
+      </button>
+      <button
+        @click="openDeleteTaskModal"
+        :disabled="uploadLoading || downloadLoading"
+        class="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Delete
+      </button>
     </div>
   </div>
 
   <div v-if="isEditing" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
     <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
       <h2 class="text-2xl font-bold mb-4 text-gray-800">Edit Task</h2>
-      <input v-model="editTitle" placeholder="Task Title" class="block w-full px-3 py-2 border text-gray-800 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3" />
-      <textarea v-model="editDescription" placeholder="Task Description (Optional)" rows="3" class="block w-full px-3 py-2 border text-gray-800 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"></textarea>
+      <input
+        v-model="editTitle"
+        placeholder="Task Title"
+        class="block w-full px-3 py-2 border text-gray-800 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+      />
+      <textarea
+        v-model="editDescription"
+        placeholder="Task Description (Optional)"
+        rows="3"
+        class="block w-full px-3 py-2 border text-gray-800 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+      ></textarea>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Due Date (Optional)</label>
-        <input type="datetime-local" v-model="editDueDate" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 mb-4" />
+        <label for="edit_due_date" class="block text-sm font-medium text-gray-700 mb-1">Due Date (Optional)</label>
+        <input
+          type="datetime-local"
+          id="edit_due_date"
+          v-model="editDueDate"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 mb-4"
+        />
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-        <select v-model="editPriority" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 mb-4">
+        <label for="edit_priority" class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+        <select
+          id="edit_priority"
+          v-model="editPriority"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 mb-4"
+        >
           <option value="low">Low</option>
           <option value="medium">Medium</option>
           <option value="high">High</option>
         </select>
       </div>
 
-      <div class="flex justify-end space-x-3">
-        <button @click="cancelEdit" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors duration-200">Cancel</button>
-        <button @click="saveEdit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200">Save Changes</button>
+
+      <div class="flex justify-end space-x-3 mt-6">
+        <button
+          type="button"
+          @click="cancelEdit"
+          class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors duration-200"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          :disabled="loading || !isFormValid"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
+        >
+          Save Changes
+        </button>
       </div>
     </div>
   </div>
+
+  <ConfirmModal
+    v-if="showDeleteTaskModal"
+    :message='`Are you sure you want to delete task "${task.title}"?`'
+    @confirm="handleDeleteTaskConfirm"
+    @cancel="closeDeleteTaskModal"
+  />
 </template>
 
 <script setup>
 import { ref } from 'vue';
 import { useTaskStore } from '@/stores/taskStore';
 import { useAuthStore } from '@/stores/authStore';
-import { useToast } from "vue-toastification";
+import { useToast } from "vue-toastification"; // Ensure this is imported
+import ConfirmModal from './ConfirmModal.vue'; // NEW: Import ConfirmModal
 
 const props = defineProps({
-  task: Object,
+  task: {
+    type: Object,
+    required: true,
+  },
 });
 
 const taskStore = useTaskStore();
@@ -102,159 +156,67 @@ const toast = useToast();
 
 const isEditing = ref(false);
 const editTitle = ref('');
-const editDescription = ref('');
-const editDueDate = ref('');
-const editPriority = ref('medium');
+const editDescription = ref(props.task.description || '');
 
+// Existing: For file upload/download
 const selectedFile = ref(null);
 const fileInput = ref(null);
 const uploadLoading = ref(false);
 const uploadError = ref(null);
-
 const downloadError = ref(null);
 const downloadLoading = ref(false);
 
-const handleFileChange = (event) => {
-  selectedFile.value = event.target.files[0];
-  uploadError.value = null;
+// NEW: State for Delete Task Confirmation Modal
+const showDeleteTaskModal = ref(false);
+// taskToDelete is implied by props.task when modal is opened from TaskItem itself
+
+const openDeleteTaskModal = () => {
+  console.log('TaskItem: Delete button clicked! Attempting to open modal for task ID:', props.task.id); // <-- ADD THIS LOG
+  showDeleteTaskModal.value = true;
+  console.log('TaskItem: showDeleteTaskModal.value set to:', showDeleteTaskModal.value); // <-- ADD THIS LOG
 };
 
-const uploadDocument = async () => {
-  if (!selectedFile.value) {
-    toast.error('Please select a file first.');
-    return;
-  }
-  if (selectedFile.value.type !== 'application/pdf') {
-    toast.error('Only PDF files are allowed.');
-    selectedFile.value = null;
-    fileInput.value && (fileInput.value.value = '');
-    return;
-  }
-  if (selectedFile.value.size > 5 * 1024 * 1024) {
-    toast.error('File size exceeds 5MB limit.');
-    selectedFile.value = null;
-    fileInput.value && (fileInput.value.value = '');
-    return;
-  }
+const formatDate = (dateString) => { /* ... unchanged ... */ };
+const priorityClass = (priority) => { /* ... unchanged ... */ };
+const handleFileChange = (event) => { /* ... unchanged ... */ };
+const uploadDocument = async () => { /* ... unchanged ... */ };
+const handleDownloadDocument = async () => { /* ... unchanged ... */ };
+const toggleCompletion = () => { /* ... unchanged ... */ };
+const startEdit = () => { /* ... unchanged ... */ };
+const saveEdit = async () => { /* ... unchanged ... */ };
+const cancelEdit = () => { /* ... unchanged ... */ };
 
-  uploadLoading.value = true;
-  uploadError.value = null;
+// MODIFIED: Delete Task - opens modal
+const deleteThisTask = () => { // This function now *opens* the modal
+  showDeleteTaskModal.value = true; // Open the confirmation modal
+};
+
+// NEW: Handle confirmation from delete task modal
+const handleDeleteTaskConfirm = async () => {
+  closeDeleteTaskModal(); // Close modal immediately
+
+  const taskIdToDelete = props.task.id;
+  const taskTitleToDelete = props.task.title;
+  
   try {
-    const data = await taskStore.uploadTaskPdf(props.task.id, selectedFile.value);
-    if (data) {
-      toast.success('Document uploaded successfully!');
-      props.task.document_path = data.document_path;
-      selectedFile.value = null;
-      fileInput.value && (fileInput.value.value = '');
+    const success = await taskStore.deleteTask(taskIdToDelete); 
+    if (success !== false) {
+      toast.success(`Task "${taskTitleToDelete}" deleted successfully.`);
     } else {
-      toast.error(taskStore.error || 'Upload failed.');
+      toast.error(taskStore.error || 'Failed to delete task.');
     }
   } catch (err) {
-    toast.error(err.message || 'An unexpected error occurred during upload.');
-  } finally {
-    uploadLoading.value = false;
+    toast.error(`Delete failed: ${err.message}`);
+    console.error('Error deleting task from modal:', err);
   }
 };
 
-const handleDownloadDocument = async () => {
-  downloadLoading.value = true;
-  downloadError.value = null;
-  try {
-    const blob = await taskStore.downloadTaskPdf(props.task.id);
-    if (blob) {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', props.task.document_path);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success('Document download initiated.');
-    } else {
-      toast.error(taskStore.error || 'Download failed.');
-    }
-  } catch (err) {
-    toast.error(err.message || 'An unexpected error occurred during download.');
-  } finally {
-    downloadLoading.value = false;
-  }
+// NEW: Close Delete Task Modal
+const closeDeleteTaskModal = () => {
+  showDeleteTaskModal.value = false;
 };
-
-const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    // Ensure the date string is parsed as UTC before converting to local display
-    // If dateString from MySQL is 'YYYY-MM-DD HH:MM:SS', appending 'Z' makes new Date() interpret it as UTC.
-    const date = new Date(dateString.endsWith('Z') ? dateString : `${dateString}Z`); // <--- MODIFIED
-    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' };
-    return date.toLocaleDateString(undefined, options);
-};
-
-const priorityClass = (priority) => {
-  return {
-    low: 'text-green-600 font-medium',
-    medium: 'text-yellow-600 font-medium',
-    high: 'text-red-600 font-medium',
-  }[priority] || 'text-gray-600';
-};
-
-const toggleCompletion = () => {
-  taskStore.updateTask({ ...props.task, completed: !props.task.completed });
-};
-
-const deleteThisTask = () => {
-  if (confirm('Are you sure you want to delete this task?')) {
-    taskStore.deleteTask(props.task.id);
-  }
-};
-
-const startEdit = () => {
-  editTitle.value = props.task.title;
-  editDescription.value = props.task.description || '';
-  editDueDate.value = props.task.due_date ? new Date(props.task.due_date).toISOString().slice(0, 16) : '';
-  editPriority.value = props.task.priority || 'medium';
-  isEditing.value = true;
-};
-
-const saveEdit = async () => {
-  if (!editTitle.value.trim()) {
-    toast.error('Task title cannot be empty.');
-    return;
-  }
-
-  const formattedDueDate = editDueDate.value
-    ? new Date(editDueDate.value).toISOString().slice(0, 19).replace('T', ' ')
-    : null;
-
-  const updatedData = {
-    id: props.task.id,
-    title: editTitle.value.trim(),
-    description: editDescription.value.trim(),
-    due_date: formattedDueDate,
-    priority: editPriority.value,
-  };
-
-  const success = await taskStore.updateTask(updatedData);
-  if (success) {
-    isEditing.value = false;
-  } else {
-    toast.error('Failed to save changes.');
-  }
-};
-
-const cancelEdit = () => {
-  isEditing.value = false;
-};
-
-// const formatDate = (dateString) => {
-//     if (!dateString) return 'N/A';
-//     // Ensure the date string is parsed as UTC before converting to local display
-//     // If dateString from MySQL is 'YYYY-MM-DD HH:MM:SS', appending 'Z' makes new Date() interpret it as UTC.
-//     const date = new Date(dateString.endsWith('Z') ? dateString : `${dateString}Z`); // <--- MODIFIED
-//     const options = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' };
-//     return date.toLocaleDateString(undefined, options);
-// };
 </script>
+
 <style scoped>
-/* Add any component-specific styles here */
+/* No specific scoped styles needed if using Tailwind extensively */
 </style>

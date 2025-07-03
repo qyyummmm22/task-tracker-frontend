@@ -2,7 +2,7 @@
   <div class="bg-white p-6 rounded-lg shadow-md mb-6">
     <h2 class="text-2xl font-bold mb-4 text-gray-800 text-center">Manage User Accounts</h2>
 
-    <p v-if="loading" class="text-center text-gray-600">Loading users...</p>
+    <p v-if="loading" class="text-center text-gray-600 py-4">Loading users...</p>
     <p v-else-if="error" class="text-center text-red-500">{{ error }}</p>
     <div v-else-if="users.length === 0" class="text-center py-12 text-gray-500">
       <p class="text-2xl font-semibold mb-2">🚫 No user accounts to manage!</p>
@@ -49,7 +49,7 @@
                 Reset PW
               </button>
               <button
-                @click="deleteUser(user.id, user.username)"
+                @click="openDeleteUserModal(user)"
                 :disabled="user.id === authStore.user?.id || loading"
                 :class="['px-3 py-1 text-white rounded-md transition-colors duration-200 text-sm',
                          user.id === authStore.user?.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600']"
@@ -113,20 +113,29 @@
       </form>
     </div>
   </div>
+
+  <ConfirmModal
+    v-if="showDeleteUserModal"
+    :message='`Are you sure you want to delete user "${userToDelete?.username}" (ID: ${userToDelete?.id})? This will also delete all their tasks.`'
+    @confirm="handleDeleteUserConfirm"
+    @cancel="closeDeleteUserModal"
+  />
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue'; // <--- THIS LINE MUST HAVE 'computed'
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from 'vue-toastification';
+import ConfirmModal from './ConfirmModal.vue';
 
 const authStore = useAuthStore();
+const toast = useToast();
+
 const users = ref([]);
 const loading = ref(false);
 const error = ref(null);
-const toast = useToast();
 
-// NEW: State for Reset Password Modal
+// State for Reset Password Modal
 const showResetPasswordModal = ref(false);
 const userToReset = ref(null); // { id: number, username: string }
 const newPasswordInput = ref('');
@@ -134,7 +143,13 @@ const confirmPasswordInput = ref('');
 const newPasswordError = ref('');
 const confirmPasswordError = ref('');
 
+// State for Delete User Confirmation Modal
+const showDeleteUserModal = ref(false);
+const userToDelete = ref(null); // { id: number, username: string }
 
+// --- ALL FUNCTIONS BELOW ARE NOW INCLUDED ---
+
+// Fetch users
 const fetchUsers = async () => {
   loading.value = true;
   error.value = null;
@@ -161,6 +176,7 @@ const fetchUsers = async () => {
   }
 };
 
+// Role update logic
 const updateUserRole = async (userId, username, newRole) => {
   if (userId === authStore.user?.id) {
     toast.error("You cannot change your own role.");
@@ -169,7 +185,7 @@ const updateUserRole = async (userId, username, newRole) => {
     return;
   }
 
-  if (!confirm(`Change role for "${username}" to "${newRole}"?`)) {
+  if (!confirm(`Change role for "${username}" to "${newRole}"?`)) { // Keep native confirm for role change for now
     const user = users.value.find(u => u.id === userId);
     if (user) user.role = user._originalRole;
     return;
@@ -203,49 +219,34 @@ const updateUserRole = async (userId, username, newRole) => {
   }
 };
 
-// const resetUserPassword = async (userId, username) => {
-//   if (userId === authStore.user?.id) {
-//     toast.error("You cannot reset your own password.");
-//     return;
-//   }
-//   if (!confirm(`Reset password for "${username}"? A new password will be generated.`)) {
-//     return;
-//   }
-
-//   loading.value = true;
-//   try {
-//     const response = await fetch(`http://localhost:3000/api/users/${userId}/reset-password`, {
-//       method: 'PUT',
-//       headers: {
-//         'Authorization': `Bearer ${authStore.token}`,
-//       },
-//     });
-
-//     if (!response.ok) {
-//       const errorData = await response.json();
-//       throw new Error(errorData.message || 'Failed to reset password.');
-//     }
-
-//     const data = await response.json();
-//     toast.success(`Password reset. New password: ${data.new_password}`);
-//     alert(`New password for ${username}: ${data.new_password}`);
-//   } catch (err) {
-//     toast.error(`Failed to reset password: ${err.message}`);
-//   } finally {
-//     loading.value = false;
-//   }
-// };
-
-const deleteUser = async (userId, username) => {
+// Delete User - opens modal
+const deleteUser = async (userId, username) => { // This function now *opens* the modal
   if (userId === authStore.user?.id) {
-    toast.error("You cannot delete your own account.");
+    toast.error("You cannot delete your own account from this panel.");
     return;
   }
-  if (!confirm(`Delete user "${username}" (ID: ${userId}) and all tasks?`)) return;
+  userToDelete.value = { id: userId, username: username }; // Store user to be deleted
+  showDeleteUserModal.value = true; // Open the confirmation modal
+};
 
+// Handle confirmed deletion
+const handleDeleteUserConfirm = async () => {
+  if (!userToDelete.value){
+    console.error('ManageUsers: handleDeleteUserConfirm called but userToDelete.value is null!');
+    return; // Should not happen
+  }
+
+console.log('ManageUsers: Confirming delete for userToDelete.value:', userToDelete.value); // Debug log 1
+console.log('ManageUsers: authStore.user.id:', authStore.user?.id, 'authStore.token:', authStore.token ? 'present' : 'missing'); // Debug log 2
+
+  // closeDeleteUserModal(); // Close modal immediately
+  
   loading.value = true;
   try {
-    const response = await fetch(`http://localhost:3000/api/users/${userId}`, {
+    const url = `http://localhost:3000/api/users/${userToDelete.value.id}`; // <--- This line attempts to read 'id'
+    console.log('ManageUsers: Fetching URL for delete:', url); // Debug log 3
+
+    const response = await fetch(`http://localhost:3000/api/users/${userToDelete.value.id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${authStore.token}`,
@@ -257,100 +258,121 @@ const deleteUser = async (userId, username) => {
       throw new Error(errorData.message || 'Failed to delete user.');
     }
 
-    users.value = users.value.filter(user => user.id !== userId);
-    toast.success(`User "${username}" deleted.`);
+    users.value = users.value.filter(u => u.id !== userToDelete.value.id);
+    toast.success(`User "${userToDelete.value.username}" deleted successfully.`);
+
+    closeDeleteUserModal();
+    
   } catch (err) {
     toast.error(`Delete failed: ${err.message}`);
+    console.error('ManageUsers: Error deleting user (caught):', err); // Debug log
   } finally {
     loading.value = false;
+    userToDelete.value = null; // Clear userToDelete after attempt
   }
 };
 
-// NEW: Open Reset Password Modal
+const openDeleteUserModal = (user) => {
+  console.log('ManageUsers: Delete button clicked! Attempting to open modal for user:', user.username, 'ID:', user.id); // Check if this appears
+  if (user.id === authStore.user?.id) {
+    toast.error("You cannot delete your own account from this panel.");
+    return;
+  }
+  userToDelete.value = { id: user.id, username: user.username };
+  showDeleteUserModal.value = true;
+  console.log('ManageUsers: showDeleteUserModal.value set to:', showDeleteUserModal.value); // Check if this appears
+};
+
+const closeDeleteUserModal = () => {
+  showDeleteUserModal.value = false;
+  userToDelete.value = null;
+};
+
+// Open Reset Password Modal
 const openResetPasswordModal = (user) => {
-  userToReset.value = { id: user.id, username: user.username };
-  newPasswordInput.value = ''; // Clear fields
-  confirmPasswordInput.value = '';
-  newPasswordError.value = ''; // Clear errors
-  confirmPasswordError.value = '';
-  showResetPasswordModal.value = true;
+  userToReset.value = { id: user.id, username: user.username };
+  newPasswordInput.value = ''; // Clear fields
+  confirmPasswordInput.value = '';
+  newPasswordError.value = ''; // Clear errors
+  confirmPasswordError.value = '';
+  showResetPasswordModal.value = true;
 };
 
-// NEW: Close Reset Password Modal
+// Close Reset Password Modal
 const closeResetPasswordModal = () => {
-  showResetPasswordModal.value = false;
-  userToReset.value = null;
+  showResetPasswordModal.value = false;
+  userToReset.value = null;
 };
 
-// NEW: Client-side validation for New Password in Modal
+// Client-side validation for New Password in Modal
 const validateNewPassword = () => {
-  if (!newPasswordInput.value) {
-    newPasswordError.value = 'New password is required.';
-  } else if (newPasswordInput.value.length < 6) { // Min length 6, match backend
-    newPasswordError.value = 'Password must be at least 6 characters.';
-  } else {
-    newPasswordError.value = '';
-  }
-  validateConfirmPassword(); // Re-validate confirm password if new password changes
-  return !newPasswordError.value;
+  if (!newPasswordInput.value) {
+    newPasswordError.value = 'New password is required.';
+  } else if (newPasswordInput.value.length < 6) { // Min length 6, match backend
+    newPasswordError.value = 'Password must be at least 6 characters.';
+  } else {
+    newPasswordError.value = '';
+  }
+  validateConfirmPassword(); // Re-validate confirm password if new password changes
+  return !newPasswordError.value;
 };
 
-// NEW: Client-side validation for Confirm Password in Modal
+// Client-side validation for Confirm Password in Modal
 const validateConfirmPassword = () => {
-  if (!confirmPasswordInput.value) {
-    confirmPasswordError.value = 'Confirmation is required.';
-  } else if (confirmPasswordInput.value !== newPasswordInput.value) {
-    confirmPasswordError.value = 'Passwords do not match.';
-  } else {
-    confirmPasswordError.value = '';
-  }
-  return !confirmPasswordError.value;
+  if (!confirmPasswordInput.value) {
+    confirmPasswordError.value = 'Confirmation is required.';
+  } else if (confirmPasswordInput.value !== newPasswordInput.value) {
+    confirmPasswordError.value = 'Passwords do not match.';
+  } else {
+    confirmPasswordError.value = '';
+  }
+  return !confirmPasswordError.value;
 };
 
-// NEW: Computed property for overall form validity in modal
+// Computed property for overall form validity in modal
 const isResetPasswordFormValid = computed(() => {
-  return !newPasswordError.value && !confirmPasswordError.value &&
-         newPasswordInput.value.length >= 6 && newPasswordInput.value === confirmPasswordInput.value;
+  return !newPasswordError.value && !confirmPasswordError.value &&
+           newPasswordInput.value.length >= 6 && newPasswordInput.value === confirmPasswordInput.value;
 });
 
-// NEW: Handle Password Reset Submission from Modal
+// Handle Password Reset Submission from Modal
 const handlePasswordResetSubmit = async () => {
-  // Final validation before sending
-  if (!validateNewPassword() || !validateConfirmPassword()) {
-    toast.error("Please fix password errors in the form.");
-    return;
-  }
+  // Final validation before sending
+  if (!validateNewPassword() || !validateConfirmPassword()) {
+    toast.error("Please fix password errors in the form.");
+    return;
+  }
 
-  if (!userToReset.value) { // Should not happen
-    toast.error("Error: User not selected for password reset.");
-    return;
-  }
+  if (!userToReset.value) { // Should not happen
+    toast.error("Error: User not selected for password reset.");
+    return;
+  }
 
-  loading.value = true; // Use the main loading state
-  try {
-    const response = await fetch(`http://localhost:3000/api/users/${userToReset.value.id}/reset-password`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`,
-      },
-      body: JSON.stringify({ newPassword: newPasswordInput.value }), // Send new password
-    });
+  loading.value = true; // Use the main loading state
+  try {
+    const response = await fetch(`http://localhost:3000/api/users/${userToReset.value.id}/reset-password`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`,
+      },
+      body: JSON.stringify({ newPassword: newPasswordInput.value }), // Send new password
+    });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to reset password.');
-    }
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to reset password.');
+    }
 
-    toast.success(`Password for "${userToReset.value.username}" reset successfully.`);
-    closeResetPasswordModal(); // Close modal on success
+    toast.success(`Password for "${userToReset.value.username}" reset successfully.`);
+    closeResetPasswordModal(); // Close modal on success
 
-  } catch (err) {
-    toast.error(`Failed to reset password: ${err.message}`);
-    console.error('Error resetting password from modal:', err);
-  } finally {
-    loading.value = false;
-  }
+  } catch (err) {
+    toast.error(`Failed to reset password: ${err.message}`);
+    console.error('Error resetting password from modal:', err);
+  } finally {
+    loading.value = false;
+  }
 };
 
 
@@ -358,5 +380,5 @@ onMounted(fetchUsers);
 </script>
 
 <style scoped>
-/* optional custom styles */
+/* Optional custom styles */
 </style>
