@@ -118,12 +118,12 @@
           Cancel
         </button>
         <button
-          type="submit"
-          :disabled="loading || !isFormValid"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
-        >
-          Save Changes
-        </button>
+  type="submit"
+  :disabled="loading || !isFormValid"
+  @click="saveEdit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
+>
+  Save Changes
+</button>
       </div>
     </div>
   </div>
@@ -137,11 +137,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue'; // Add 'computed' for isFormValid
 import { useTaskStore } from '@/stores/taskStore';
 import { useAuthStore } from '@/stores/authStore';
-import { useToast } from "vue-toastification"; // Ensure this is imported
-import ConfirmModal from './ConfirmModal.vue'; // NEW: Import ConfirmModal
+import { useToast } from "vue-toastification";
+import ConfirmModal from './ConfirmModal.vue';
 
 const props = defineProps({
   task: {
@@ -156,7 +156,9 @@ const toast = useToast();
 
 const isEditing = ref(false);
 const editTitle = ref('');
-const editDescription = ref(props.task.description || '');
+const editDescription = ref(''); // Initialize without props.task.description to ensure it's reactive from startEdit
+const editDueDate = ref(''); // Initialize
+const editPriority = ref('medium'); // Initialize
 
 // Existing: For file upload/download
 const selectedFile = ref(null);
@@ -168,39 +170,203 @@ const downloadLoading = ref(false);
 
 // NEW: State for Delete Task Confirmation Modal
 const showDeleteTaskModal = ref(false);
-// taskToDelete is implied by props.task when modal is opened from TaskItem itself
 
 const openDeleteTaskModal = () => {
-  console.log('TaskItem: Delete button clicked! Attempting to open modal for task ID:', props.task.id); // <-- ADD THIS LOG
+  console.log('TaskItem: Delete button clicked! Attempting to open modal for task ID:', props.task.id);
   showDeleteTaskModal.value = true;
-  console.log('TaskItem: showDeleteTaskModal.value set to:', showDeleteTaskModal.value); // <-- ADD THIS LOG
+  console.log('TaskItem: showDeleteTaskModal.value set to:', showDeleteTaskModal.value);
 };
 
-const formatDate = (dateString) => { /* ... unchanged ... */ };
-const priorityClass = (priority) => { /* ... unchanged ... */ };
-const handleFileChange = (event) => { /* ... unchanged ... */ };
-const uploadDocument = async () => { /* ... unchanged ... */ };
-const handleDownloadDocument = async () => { /* ... unchanged ... */ };
-const toggleCompletion = () => { /* ... unchanged ... */ };
-const startEdit = () => { /* ... unchanged ... */ };
-const saveEdit = async () => { /* ... unchanged ... */ };
-const cancelEdit = () => { /* ... unchanged ... */ };
-
-// MODIFIED: Delete Task - opens modal
-const deleteThisTask = () => { // This function now *opens* the modal
-  showDeleteTaskModal.value = true; // Open the confirmation modal
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString.endsWith('Z') ? dateString : `${dateString}Z`);
+  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+  return date.toLocaleDateString(undefined, options);
 };
 
-// NEW: Handle confirmation from delete task modal
+const priorityClass = (priority) => {
+  return {
+    low: 'text-green-600 font-medium',
+    medium: 'text-yellow-600 font-medium',
+    high: 'text-red-600 font-medium',
+  }[priority] || 'text-gray-600';
+};
+
+// Corrected handleFileChange function
+const handleFileChange = (event) => {
+  selectedFile.value = event.target.files ? event.target.files[0] : null;
+  // Clear previous errors if a new file is selected
+  uploadError.value = null;
+};
+
+// Corrected and consolidated uploadDocument function
+const uploadDocument = async () => {
+  if (!selectedFile.value) {
+    toast.error('Please select a file to upload.');
+    return;
+  }
+  if (selectedFile.value.type !== 'application/pdf') {
+    toast.error('Only PDF files are allowed.');
+    selectedFile.value = null;
+    if (fileInput.value) fileInput.value.value = ''; // Reset file input
+    return;
+  }
+  if (selectedFile.value.size > 5 * 1024 * 1024) { // 5MB limit
+    toast.error('File size exceeds 5MB limit.');
+    selectedFile.value = null;
+    if (fileInput.value) fileInput.value.value = ''; // Reset file input
+    return;
+  }
+
+  uploadLoading.value = true;
+  uploadError.value = null; // Clear previous upload error
+
+  try {
+    const data = await taskStore.uploadTaskPdf(props.task.id, selectedFile.value);
+    if (data) {
+      toast.success('Document uploaded successfully.');
+      props.task.document_path = data.document_path; // Update task with new document path
+      selectedFile.value = null; // Reset file input
+      if (fileInput.value) fileInput.value.value = ''; // Reset file input
+    } else {
+      toast.error(taskStore.error || 'Failed to upload document.');
+    }
+  } catch (err) {
+    uploadError.value = err.message || 'An unexpected error occurred during upload.';
+    toast.error(uploadError.value);
+  } finally {
+    uploadLoading.value = false;
+  }
+};
+
+const handleDownloadDocument = async () => {
+  downloadLoading.value = true;
+  downloadError.value = null; // Clear previous download error
+
+  try {
+    const blob = await taskStore.downloadTaskPdf(props.task.id);
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      // Extract original filename from document_path, if it contains the unique ID prefix
+      const fileNameParts = props.task.document_path.split('-');
+      const originalFileName = fileNameParts.length > 1 ? fileNameParts.slice(1).join('-') : props.task.document_path;
+      link.setAttribute('download', originalFileName); // Use original filename for download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Document download initiated.');
+    } else {
+      downloadError.value = taskStore.error || 'Download failed.';
+      toast.error(downloadError.value);
+    }
+  } catch (err) {
+    downloadError.value = err.message || 'An unexpected error occurred during download.';
+    toast.error(downloadError.value);
+  } finally {
+    downloadLoading.value = false;
+  }
+};
+
+const toggleCompletion = async () => {
+  // Optimistically update UI
+  props.task.completed = !props.task.completed;
+  try {
+    await taskStore.updateTask({ ...props.task, completed: props.task.completed });
+    toast.success('Task completion status updated!');
+  } catch (error) {
+    toast.error('Failed to update task completion.');
+    // Revert UI if update fails
+    props.task.completed = !props.task.completed;
+  }
+};
+
+const startEdit = () => {
+  editTitle.value = props.task.title;
+  editDescription.value = props.task.description || '';
+  // Convert date to 'YYYY-MM-DDTHH:MM' format for datetime-local input
+  editDueDate.value = props.task.due_date ? new Date(props.task.due_date).toISOString().slice(0, 16) : '';
+  editPriority.value = props.task.priority || 'medium';
+  isEditing.value = true;
+};
+
+// Add a computed property for form validation
+const isFormValid = computed(() => {
+  // Ensure 'editTitle' is accessible and correctly referenced here
+  const isValid = editTitle.value.trim() !== '';
+  console.log('isFormValid check:', isValid, 'editTitle value:', editTitle.value); // Keep this for debugging
+  return isValid;
+});
+
+// Define loading state for the edit modal save button
+const loading = ref(false);
+
+const saveEdit = async () => {
+  console.log('Save Edit button clicked!'); // Add this line
+  if (!editTitle.value.trim()) {
+    toast.error('Task title cannot be empty.');
+    return;
+  }
+
+  loading.value = true; // Set loading to true when saving starts
+
+  const updatedTask = {
+    id: props.task.id,
+    title: editTitle.value,
+    description: editDescription.value,
+    completed: props.task.completed, // Keep current completion status
+    due_date: editDueDate.value ? new Date(editDueDate.value).toISOString() : null, // Convert back to ISO string
+    priority: editPriority.value,
+  };
+
+  try {
+    const success = await taskStore.updateTask(updatedTask);
+    if (success) {
+      toast.success('Task updated successfully!');
+      // Manually update the task prop to reflect changes without a full reload
+      props.task.title = updatedTask.title;
+      props.task.description = updatedTask.description;
+      props.task.due_date = updatedTask.due_date;
+      props.task.priority = updatedTask.priority;
+      cancelEdit(); // Close the modal
+    } else {
+      toast.error(taskStore.error || 'Failed to update task.');
+    }
+  } catch (err) {
+    toast.error(`Update failed: ${err.message}`);
+    console.error('Error updating task:', err);
+  } finally {
+    loading.value = false; // Set loading to false when saving finishes
+  }
+};
+
+const cancelEdit = () => {
+  isEditing.value = false;
+  // Optionally reset edit fields to current task values or clear them
+  editTitle.value = '';
+  editDescription.value = '';
+  editDueDate.value = '';
+  editPriority.value = 'medium';
+};
+
+// Corrected deleteThisTask to be a simple alias or removed if openDeleteTaskModal is directly used
+// The 'Delete' button directly calls openDeleteTaskModal, so deleteThisTask is redundant if not used elsewhere.
+// const deleteThisTask = () => { // This function now *opens* the modal
+//   showDeleteTaskModal.value = true; // Open the confirmation modal
+// };
+
+
 const handleDeleteTaskConfirm = async () => {
   closeDeleteTaskModal(); // Close modal immediately
 
   const taskIdToDelete = props.task.id;
   const taskTitleToDelete = props.task.title;
-  
+
   try {
-    const success = await taskStore.deleteTask(taskIdToDelete); 
-    if (success !== false) {
+    const success = await taskStore.deleteTask(taskIdToDelete);
+    if (success !== false) { // Check for explicit false from store to handle errors
       toast.success(`Task "${taskTitleToDelete}" deleted successfully.`);
     } else {
       toast.error(taskStore.error || 'Failed to delete task.');
@@ -211,7 +377,6 @@ const handleDeleteTaskConfirm = async () => {
   }
 };
 
-// NEW: Close Delete Task Modal
 const closeDeleteTaskModal = () => {
   showDeleteTaskModal.value = false;
 };

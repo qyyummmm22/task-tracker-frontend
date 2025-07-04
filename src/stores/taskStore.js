@@ -110,31 +110,34 @@ export const useTaskStore = defineStore('task', {
       }
     },
 
-    async updateTask(updatedTask) {
-      this.loading = true;
-      this.error = null;
-      try {
-        const response = await fetch(`${API_BASE_URL}/${updatedTask.id}`, {
-          method: 'PUT',
-          headers: this.getAuthHeaders(), // Default 'application/json'
-          body: JSON.stringify(updatedTask),
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to update task');
-        }
-        const responseData = await response.json();
-        const index = this.tasks.findIndex(task => task.id === updatedTask.id);
-        if (index !== -1) {
-          this.tasks[index] = responseData;
-        }
-      } catch (err) {
-        this.error = 'Failed to update task: ' + err.message;
-        console.error('Update error:', err);
-      } finally {
-        this.loading = false;
-      }
-    },
+    // Inside your taskStore.js
+async updateTask(updatedTask) {
+  this.loading = true;
+  this.error = null;
+  try {
+    const response = await fetch(`${API_BASE_URL}/${updatedTask.id}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(updatedTask),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update task');
+    }
+    const responseData = await response.json();
+    const index = this.tasks.findIndex(task => task.id === updatedTask.id);
+    if (index !== -1) {
+      this.tasks[index] = responseData;
+    }
+    return true; // <--- ADD THIS LINE FOR SUCCESS
+  } catch (err) {
+    this.error = 'Failed to update task: ' + err.message;
+    console.error('Update error:', err);
+    return false; // <--- ADD THIS LINE FOR FAILURE
+  } finally {
+    this.loading = false;
+  }
+},
 
     async deleteTask(id) {
       this.loading = true;
