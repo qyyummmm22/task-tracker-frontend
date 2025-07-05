@@ -350,11 +350,29 @@ const handleDownloadDocument = async () => {
 const toggleCompletion = async () => {
   // Optimistically update UI
   props.task.completed = !props.task.completed;
+
   try {
-    await taskStore.updateTask({ ...props.task, completed: props.task.completed });
-    toast.success('Task completion status updated!');
+    // NEW: Format due_date for MySQL before sending the update
+    const formattedDueDate = props.task.due_date ?
+      new Date(props.task.due_date).toISOString().slice(0, 19).replace('T', ' ') :
+      null;
+
+    const updatedTaskData = {
+      ...props.task, // Spread existing task data
+      completed: props.task.completed, // Ensure updated completion status
+      due_date: formattedDueDate, // <--- MODIFIED: Use formatted date
+    };
+
+    const success = await taskStore.updateTask(updatedTaskData);
+    if (success) {
+      toast.success('Task completion status updated!');
+    } else {
+      toast.error(taskStore.error || 'Failed to update task completion.');
+      // Revert UI if update fails
+      props.task.completed = !props.task.completed;
+    }
   } catch (error) {
-    toast.error('Failed to update task completion.');
+    toast.error('Failed to update task completion: ' + error.message);
     // Revert UI if update fails
     props.task.completed = !props.task.completed;
   }
@@ -566,7 +584,7 @@ const handleDeleteCommentConfirm = async () => {
     toast.success('Comment deleted successfully!');
 
     closeDeleteCommentModal(); // Close modal immediately
-    
+
   } catch (err) {
     toast.error(`Delete comment failed: ${err.message}`);
     console.error('Error deleting comment:', err);
