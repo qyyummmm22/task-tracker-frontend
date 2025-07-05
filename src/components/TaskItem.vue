@@ -8,18 +8,31 @@
         class="mr-3 h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
         v-if="task.user_id === authStore.user?.id" />
 
-      <div :class="{ 'line-through text-gray-500': task.completed }">
-        <h3 class="text-lg font-semibold text-gray-800">{{ task.title }}</h3>
-        <p v-if="task.description" class="text-sm text-gray-600">{{ task.description }}</p>
+      <div :class="{'text-gray-600': task.completed, 'text-gray-800': !task.completed}"> <!-- MODIFIED: Conditional text color -->
+          <h3 class="text-lg font-semibold flex items-center"> <!-- ADDED flex items-center -->
+            {{ task.title }}
+            <!-- NEW: Checkmark icon for completed tasks -->
+            <svg v-if="task.completed" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500 ml-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1  0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
 
-        <p v-if="task.added_by_username" class="text-xs text-gray-500 mt-1">
-          Added by: <span class="font-medium">{{ task.added_by_username }}</span>
-        </p>
+            <!-- NEW: Comments Toggle Button -->
+            <button @click="toggleComments" class="text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-1 -mr-1">
+              <svg xmlns="http://www.w3.org/2000/svg" :class="['h-5 w-5 transform transition-transform duration-200', showComments ? 'rotate-180' : 'rotate-0']" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </h3>
+          <p v-if="task.description" class="text-sm">{{ task.description }}</p>
 
-        <div class="flex items-center space-x-4 text-xs text-gray-600 mt-1">
-            <p v-if="task.due_date">Due: {{ formatDate(task.due_date) }}</p>
-            <p :class="priorityClass(task.priority)">Priority: {{ task.priority.charAt(0).toUpperCase() + task.priority.slice(1) }}</p>
-        </div>
+          <p v-if="task.added_by_username" class="text-xs mt-1">
+            Added by: <span class="font-medium">{{ task.added_by_username }}</span>
+          </p>
+
+          <div class="flex items-center space-x-4 text-xs mt-1 bg-gray-50 p-1 rounded">
+              <p v-if="task.due_date && !task.completed">Due: {{ formatDate(task.due_date) }}</p>
+              <p :class="priorityClass(task.priority)">Priority: {{ task.priority.charAt(0).toUpperCase() + task.priority.slice(1) }}</p>
+          </div>
 
         <div class="mt-2 text-sm">
           <div v-if="task.document_path">
@@ -49,6 +62,46 @@
             <p v-if="uploadError" class="text-red-500 text-xs">{{ uploadError }}</p>
           </div>
         </div>
+
+        <!-- NEW: Comments Section - Conditionally rendered with v-if="showComments" -->
+      <div v-if="showComments" class="mt-4 pt-4 border-t border-gray-200 w-full"> 
+        <h4 class="text-md font-semibold text-gray-700 mb-2">Comments ({{ comments.length }})</h4>
+        <p v-if="commentsLoading" class="text-sm text-gray-500">Loading comments...</p>
+        <p v-else-if="commentsError" class="text-sm text-red-500">{{ commentsError }}</p>
+        <ul v-else-if="comments.length > 0" class="space-y-3">
+          <li v-for="comment in comments" :key="comment.id" class="bg-gray-50 p-3 rounded-md">
+            <div class="flex justify-between items-center text-xs text-gray-500 mb-1">
+              <span class="font-medium text-gray-800">{{ comment.commenter_username }}</span>
+              <span>{{ formatDate(comment.created_at) }}</span>
+            </div>
+            <p class="text-sm text-gray-700">{{ comment.content }}</p>
+          </li>
+        </ul>
+        <p v-else class="text-sm text-gray-500">No comments yet. Be the first to add one!</p>
+
+
+
+          <!-- Add Comment Form -->
+          <form @submit.prevent="addComment" class="mt-4 space-y-2">
+            <textarea
+              v-model="newCommentContent"
+              placeholder="Add a comment..."
+              rows="2"
+              required
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              :disabled="addingComment"
+            ></textarea>
+            <button
+              type="submit"
+              :disabled="addingComment || !newCommentContent.trim()"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ addingComment ? 'Adding...' : 'Add Comment' }}
+            </button>
+            <p v-if="addCommentError" class="text-red-500 text-xs">{{ addCommentError }}</p>
+          </form>
+        </div>
+        <!-- END NEW: Comments Section -->
 
       </div>
     </div>
@@ -137,7 +190,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'; // Add 'computed' for isFormValid
+import { ref, computed, onMounted} from 'vue'; // Add 'computed' for isFormValid
 import { useTaskStore } from '@/stores/taskStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from "vue-toastification";
@@ -178,10 +231,11 @@ const openDeleteTaskModal = () => {
 };
 
 const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString.endsWith('Z') ? dateString : `${dateString}Z`);
-  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' };
-  return date.toLocaleDateString(undefined, options);
+    if (!dateString) return 'N/A';
+    // MODIFIED: Simplify, as backend provides ISO strings with 'Z'
+    const date = new Date(dateString); // <--- SIMPLIFIED
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+    return date.toLocaleDateString(undefined, options);
 };
 
 const priorityClass = (priority) => {
@@ -380,6 +434,87 @@ const handleDeleteTaskConfirm = async () => {
 const closeDeleteTaskModal = () => {
   showDeleteTaskModal.value = false;
 };
+
+// --- ADD THESE LINES FOR COMMENTS STATE ---
+const comments = ref([]);
+const commentsLoading = ref(false);
+const commentsError = ref(null);
+const newCommentContent = ref('');
+const addingComment = ref(false);
+const addCommentError = ref(null);
+
+const showComments = ref(false); // Controls comments section visibility
+// --- END ADD ---
+
+// NEW: Toggle Comments Visibility
+const toggleComments = () => {
+  showComments.value = !showComments.value;
+  if (showComments.value && comments.value.length === 0 && !commentsLoading.value && !commentsError.value) {
+    // Only fetch comments if opening for the first time and not already loaded/failed
+    fetchComments();
+  }
+};
+
+// NEW: Fetch Comments for this task
+const fetchComments = async () => {
+  commentsLoading.value = true;
+  commentsError.value = null;
+  try {
+    const response = await fetch(`http://localhost:3000/api/tasks/${props.task.id}/comments`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch comments.');
+    }
+    comments.value = await response.json();
+  } catch (err) {
+    commentsError.value = err.message;
+    console.error('Error fetching comments:', err);
+  } finally {
+    commentsLoading.value = false;
+  }
+};
+
+// NEW: Add a new comment
+const addComment = async () => {
+  if (!newCommentContent.value.trim()) {
+    addCommentError.value = 'Comment cannot be empty.';
+    toast.error('Comment cannot be empty.');
+    return;
+  }
+  addingComment.value = true;
+  addCommentError.value = null;
+  try {
+    const response = await fetch(`http://localhost:3000/api/tasks/${props.task.id}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`,
+      },
+      body: JSON.stringify({ content: newCommentContent.value.trim() }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to add comment.');
+    }
+    const newComment = await response.json();
+    comments.value.push(newComment); // Add new comment to local list
+    newCommentContent.value = ''; // Clear input
+    toast.success('Comment added successfully!');
+  } catch (err) {
+    addCommentError.value = err.message;
+    toast.error(`Failed to add comment: ${err.message}`);
+    console.error('Error adding comment:', err);
+  } finally {
+    addingComment.value = false;
+  }
+};
+
+// Fetch comments when component is mounted
+onMounted(fetchComments);
 </script>
 
 <style scoped>
