@@ -1,90 +1,120 @@
-# My Task Tracker Application
+# Advanced Task Tracker Application
 
+A robust, full-stack web application built to help individuals and teams efficiently manage tasks. This project features a responsive and modern UI along with a secure backend, showcasing a strong understanding of web development principles and best practices.
 
-## Project Description
+---
 
-This project is a full-stack web application designed to help users manage their daily tasks efficiently. It serves as a comprehensive demonstration of modern web development practices, integrating a responsive frontend with a robust backend and a persistent database.
+## 🔧 Key Features
 
-## Features
+### ✅ Core Task Management
+- **CRUD Operations**: Create, Read, Update, Delete tasks
+- **Task Completion**: Mark tasks as completed or pending with visual checkmarks
+- **Due Dates & Priorities**: Assign deadlines and priorities (Low, Medium, High)
+- **File Attachments**: Upload and download PDF documents securely
 
-* **Task Management:**
-    * Add new tasks with a title and optional description.
-    * Mark tasks as completed/uncompleted.
-    * Edit existing tasks (title and description).
-    * Delete tasks.
-* **Persistent Storage:** All tasks are stored in a MySQL database, ensuring data is saved even after closing the application.
-* **Responsive Interface:** Built with Tailwind CSS for a modern, mobile-first, and responsive user experience.
-* **Clear & Intuitive UI:** Designed for ease of use, allowing quick task management.
+### 👤 User Management & Authentication
+- **User Registration & Login**
+- **Role-Based Access Control**: Admin and Staff roles with different permissions
+- **JWT Authentication** for secure API communication
+- **Password Hashing** using `bcryptjs`
+- **User Profiles**: View profile and securely change passwords
 
-## Technologies Used
+### 🛠 Admin Dashboard
+- **User Management**:
+  - View all users and their task counts
+  - Edit user roles (Admin/Staff)
+  - Reset user passwords securely via modal
+  - Delete user accounts with cascading task deletion
+- **Task Management**:
+  - View all tasks or filter by user
+  - Filter tasks by keyword, status, or priority
+  - Admins can assign tasks to users
 
-This application is built using the following technologies:
+### 💬 Collaboration & Notifications
+- **Task Comments**: Add discussion threads to tasks
+- **Expandable Comment Section** for clean UI
+
+### 🎯 User Experience Enhancements
+- **Toast Notifications**
+- **Loading Indicators**
+- **Empty State Messages**
+- **Client-Side Form Validation**
+- **Custom Confirmation Modals**
+
+---
+
+## 💻 Technologies Used
 
 ### Frontend
-* **Vue.js 3:** A progressive JavaScript framework for building user interfaces.
-* **Vite:** A blazing-fast build tool for modern web projects.
-* **Tailwind CSS:** A utility-first CSS framework for rapidly building custom designs.
-* **Pinia:** The official state management library for Vue.js, used for managing task data.
+- Vue.js 3
+- Vite
+- Tailwind CSS
+- Pinia
+- vue-toastification
 
 ### Backend
-* **Node.js:** A JavaScript runtime environment.
-* **Express.js:** A fast, unopinionated, minimalist web framework for Node.js, used for building the REST API.
-* **`mysql2`:** A high-performance Node.js driver for MySQL, supporting Promises.
-* **`cors`:** Node.js middleware for enabling Cross-Origin Resource Sharing (CORS).
-* **`dotenv`:** To load environment variables from a `.env` file for secure credential management.
+- Node.js
+- Express.js
+- MySQL2
+- bcryptjs
+- jsonwebtoken
+- multer
+- dotenv
+- cors
+- fs
 
 ### Database
-* **MySQL:** An open-source relational database management system for persistent data storage.
+- MySQL
 
-## Setup and Installation
+---
 
-Follow these steps to get a local copy of the project up and running.
+## ⚙️ Setup & Installation
 
-### Prerequisites
+### 1. Prerequisites
+Ensure the following are installed:
+- Node.js (LTS)
+- npm
+- MySQL Server
 
-Make sure you have the following installed on your machine:
-* [Node.js](https://nodejs.org/) (LTS version, e.g., v20.x or v22.x) and npm
-* [MySQL Server](https://dev.mysql.com/downloads/mysql/) (and a client like MySQL Workbench or a command-line client)
+---
 
-### 1. Database Setup
+### 2. Database Setup
 
-First, you need to create the database and table for your tasks.
+Run the following SQL in your MySQL client:
 
-* Log in to your MySQL server (e.g., using MySQL Workbench or the command line):
-    ```bash
-    mysql -u root -p
-    # Enter your MySQL root password when prompted
-    ```
-* Once logged in, execute the following SQL commands to create the database and the `tasks` table:
-    ```sql
-    CREATE DATABASE IF NOT EXISTS task_tracker_db;
-    USE task_tracker_db;
+```sql
+CREATE DATABASE IF NOT EXISTS task_tracker_db;
+USE task_tracker_db;
 
-    CREATE TABLE IF NOT EXISTS tasks (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        title VARCHAR(255) NOT NULL,
-        description TEXT,
-        completed BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    ```
+CREATE TABLE IF NOT EXISTS users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  role ENUM('admin', 'staff') DEFAULT 'staff',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-### 2. Backend Setup
+CREATE TABLE IF NOT EXISTS tasks (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  completed BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  user_id INT NOT NULL,
+  added_by_user_id INT NULL,
+  document_path VARCHAR(255),
+  due_date DATETIME,
+  priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (added_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+);
 
-Navigate into the backend project directory and set it up.
-
-```bash
-# In your terminal
-cd task-tracker-backend
-
-# Install backend dependencies
-npm install
-
-# Create a .env file for database credentials
-# In C:\task-tracker-backend, create a file named .env
-# Add your MySQL credentials (replace with your actual user/password)
-# Example:
-# DB_USER=root
-# DB_PASSWORD=admin123
-# DB_HOST=localhost
-# DB_DATABASE=task_tracker_db
+CREATE TABLE IF NOT EXISTS comments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  task_id INT NOT NULL,
+  user_id INT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
