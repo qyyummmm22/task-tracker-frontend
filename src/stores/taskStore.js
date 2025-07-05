@@ -3,36 +3,73 @@ import { defineStore } from 'pinia';
 import { useAuthStore } from '@/stores/authStore';
 
 const API_BASE_URL = 'http://localhost:3000/api/tasks'; // Base for tasks
+const AUTH_API_BASE_URL = 'http://localhost:3000/api'; // Base for auth
 
 export const useTaskStore = defineStore('task', {
   state: () => ({
     tasks: [],
     loading: false,
     error: null,
+    // --- NEW: Sorting State ---
+    sortBy: 'created_at',    // Default field to sort by
+    sortDirection: 'desc',   // Default direction (descending for newest first)
   }),
+  // --- NEW: Getters for sorting ---
+  getters: {
+    sortedTasks: (state) => {
+      // Create a shallow copy to prevent direct mutation of the original tasks array
+      // Array.prototype.sort() modifies the array in place, so we copy it first.
+      const tasksCopy = [...state.tasks];
+
+      return tasksCopy.sort((a, b) => {
+        // Ensure the fields exist and are valid for comparison
+        const aValue = a[state.sortBy];
+        const bValue = b[state.sortBy];
+
+        // Handle date sorting specifically for 'created_at' and 'due_date'
+        if (state.sortBy === 'created_at' || state.sortBy === 'due_date') {
+          const dateA = aValue ? new Date(aValue).getTime() : 0; // Treat null/undefined dates as epoch 0
+          const dateB = bValue ? new Date(bValue).getTime() : 0;
+
+          if (state.sortDirection === 'asc') {
+            return dateA - dateB; // Ascending: oldest first
+          } else {
+            return dateB - dateA; // Descending: newest first
+          }
+        } else {
+          // Default string/number comparison for other fields if you add them later
+          // Ensure values are not null/undefined to avoid errors
+          const valA = aValue == null ? '' : String(aValue).toLowerCase();
+          const valB = bValue == null ? '' : String(bValue).toLowerCase();
+
+          if (valA < valB) {
+            return state.sortDirection === 'asc' ? -1 : 1;
+          }
+          if (valA > valB) {
+            return state.sortDirection === 'asc' ? 1 : -1;
+          }
+          return 0;
+        }
+      });
+    },
+  },
   actions: {
     // Helper function to get authenticated headers
-    // MODIFIED: Accept contentType to allow for FormData (no Content-Type)
     getAuthHeaders(contentType = 'application/json') {
       const authStore = useAuthStore();
       if (authStore.token) {
-        // Log partial token for debugging, but avoid logging full token in production
-        // console.log('taskStore: Using authenticated headers with token (first 10 chars):', authStore.token.substring(0, 10) + '...');
         return {
           'Authorization': `Bearer ${authStore.token}`,
-          // Conditionally add Content-Type
           ...(contentType ? { 'Content-Type': contentType } : {}),
         };
       }
-      // console.log('taskStore: No authentication token found. Sending request without token.');
-      // If no token, only return Content-Type if specified
       return contentType ? { 'Content-Type': contentType } : {};
     },
 
-    async fetchTasks(filters = {}) { // <--- MODIFIED to accept filters object
-      console.log('taskStore: fetchTasks received argument:'); // <--- NEW LOG
-      console.log('  Type of filters:', typeof filters);       // <--- NEW LOG
-      console.log('  Value of filters:', filters);             // <--- NEW LOG
+    async fetchTasks(filters = {}) {
+      console.log('taskStore: fetchTasks received argument:');
+      console.log('   Type of filters:', typeof filters);
+      console.log('   Value of filters:', filters);
 
       this.loading = true;
       this.error = null;
@@ -40,12 +77,9 @@ export const useTaskStore = defineStore('task', {
         let url = API_BASE_URL;
         const queryParams = [];
 
-        // userIdFilter (for admin's specific user view) is now part of filters
         if (filters.userIdFilter) {
           queryParams.push(`userId=${filters.userIdFilter}`);
         }
-
-        // NEW: Add other filter parameters
         if (filters.search) {
           queryParams.push(`search=${encodeURIComponent(filters.search)}`);
         }
@@ -56,10 +90,10 @@ export const useTaskStore = defineStore('task', {
           queryParams.push(`priority=${filters.priority}`);
         }
         if (filters.startDate) {
-          queryParams.push(`startDate=${filters.startDate}`); // Expecting YYYY-MM-DD HH:MM:SS format
+          queryParams.push(`startDate=${filters.startDate}`);
         }
         if (filters.endDate) {
-          queryParams.push(`endDate=${filters.endDate}`); // Expecting YYYY-MM-DD HH:MM:SS format
+          queryParams.push(`endDate=${filters.endDate}`);
         }
 
         if (queryParams.length > 0) {
@@ -93,7 +127,7 @@ export const useTaskStore = defineStore('task', {
 
         const response = await fetch(API_BASE_URL, {
           method: 'POST',
-          headers: this.getAuthHeaders(), // Default 'application/json'
+          headers: this.getAuthHeaders(),
           body: JSON.stringify(payload),
         });
         if (!response.ok) {
@@ -110,86 +144,77 @@ export const useTaskStore = defineStore('task', {
       }
     },
 
-    // Inside your taskStore.js
-async updateTask(updatedTask) {
-  this.loading = true;
-  this.error = null;
-  try {
-    const response = await fetch(`${API_BASE_URL}/${updatedTask.id}`, {
-      method: 'PUT',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(updatedTask),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to update task');
-    }
-    const responseData = await response.json();
-    const index = this.tasks.findIndex(task => task.id === updatedTask.id);
-    if (index !== -1) {
-      this.tasks[index] = responseData;
-    }
-    return true; // <--- ADD THIS LINE FOR SUCCESS
-  } catch (err) {
-    this.error = 'Failed to update task: ' + err.message;
-    console.error('Update error:', err);
-    return false; // <--- ADD THIS LINE FOR FAILURE
-  } finally {
-    this.loading = false;
-  }
-},
+    async updateTask(updatedTask) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const response = await fetch(`${API_BASE_URL}/${updatedTask.id}`, {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(updatedTask),
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to update task');
+        }
+        const responseData = await response.json();
+        const index = this.tasks.findIndex(task => task.id === updatedTask.id);
+        if (index !== -1) {
+          // Merge or replace. Assuming responseData contains the fully updated task from server
+          this.tasks[index] = responseData;
+        }
+        return true;
+      } catch (err) {
+        this.error = 'Failed to update task: ' + err.message;
+        console.error('Update error:', err);
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
 
     async deleteTask(id) {
       this.loading = true;
       this.error = null;
-      // console.log('taskStore: Attempting to delete task with ID:', id); // Debug log
-
       try {
         const url = `${API_BASE_URL}/${id}`;
-        // console.log('taskStore: Delete URL:', url); // Debug log
-
         const response = await fetch(url, {
           method: 'DELETE',
-          headers: this.getAuthHeaders(), // Default 'application/json'
+          headers: this.getAuthHeaders(),
         });
-        // console.log('taskStore: Fetch response received. Status:', response.status); // Debug log
 
         if (!response.ok && response.status !== 204) {
-            // console.log('taskStore: Response not OK and not 204. Status:', response.status); // Debug log
-            const errorData = await response.json();
-            throw new Error(errorData.message || `Failed to delete task: Server responded with status ${response.status}`);
-        } else if (response.status === 204) {
-            // console.log('taskStore: Delete successful (204 No Content).'); // Debug log for 204
-        } else if (!response.ok) {
-            throw new Error(`Failed to delete task: Server responded with status ${response.status}`);
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to delete task: Server responded with status ${response.status}`);
+        } else if (!response.ok) { // This else-if is technically redundant due to the first if, but harmless.
+          throw new Error(`Failed to delete task: Server responded with status ${response.status}`);
         }
 
-        // console.log('taskStore: Filtering tasks after successful delete.'); // Debug log
         this.tasks = this.tasks.filter(task => task.id !== id);
-        // console.log('taskStore: Task list updated.'); // Debug log
 
       } catch (err) {
         this.error = 'Failed to delete task: ' + err.message;
         console.error('taskStore: Delete error (caught):', err);
       } finally {
         this.loading = false;
-        // console.log('taskStore: Delete action finished.'); // Debug log
       }
     },
 
-    // --- NEW ACTION: Upload PDF to a specific task ---
     async uploadTaskPdf(taskId, file) {
       this.loading = true;
       this.error = null;
 
       try {
         const formData = new FormData();
-        formData.append('pdfFile', file); // 'pdfFile' must match the field name in Multer config (upload.single('pdfFile'))
+        formData.append('pdfFile', file);
 
-        // For FormData, browser sets Content-Type itself, so we pass null/empty string to getAuthHeaders
+        const authStore = useAuthStore();
+
         const response = await fetch(`${API_BASE_URL}/${taskId}/upload-pdf`, {
           method: 'POST',
-          headers: this.getAuthHeaders(null), // Pass null to prevent explicit 'Content-Type: application/json'
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`, // Only Authorization header
+          },
           body: formData,
         });
 
@@ -209,40 +234,56 @@ async updateTask(updatedTask) {
       }
     },
 
-    // --- NEW ACTION: Download PDF for a specific task ---
     async downloadTaskPdf(taskId) {
-        this.loading = true;
-        this.error = null;
-        try {
-            const url = `${API_BASE_URL}/${taskId}/download-pdf`;
-            const response = await fetch(url, {
-                method: 'GET',
-                // Pass null to getAuthHeaders so Content-Type isn't set for GET requests
-                headers: this.getAuthHeaders(null),
-            });
+      this.loading = true;
+      this.error = null;
+      try {
+        const url = `${API_BASE_URL}/${taskId}/download-pdf`;
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: this.getAuthHeaders(null),
+        });
 
-            if (!response.ok) {
-                const errorData = await response.text(); // Read as text, as it might be HTML or JSON error
-                let errorMessage = `Download failed with status: ${response.status}`;
-                try {
-                    const parsedError = JSON.parse(errorData); // Try parsing as JSON
-                    errorMessage = parsedError.message || errorMessage;
-                } catch (e) {
-                    errorMessage = errorData || errorMessage; // Not JSON, use raw text or default
-                }
-                throw new Error(errorMessage);
-            }
-
-            // Return the response as a Blob
-            return await response.blob();
-
-        } catch (err) {
-            this.error = `Failed to download document: ${err.message}`;
-            console.error('taskStore: PDF download error:', err);
-            return false;
-        } finally {
-            this.loading = false;
+        if (!response.ok) {
+          const errorData = await response.text();
+          let errorMessage = `Download failed with status: ${response.status}`;
+          try {
+            const parsedError = JSON.parse(errorData);
+            errorMessage = parsedError.message || errorMessage;
+          } catch (e) {
+            errorMessage = errorData || errorMessage;
+          }
+          throw new Error(errorMessage);
         }
-    }
+
+        return await response.blob();
+
+      } catch (err) {
+        this.error = `Failed to download document: ${err.message}`;
+        console.error('taskStore: PDF download error:', err);
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // --- NEW ACTION: Toggle Sorting ---
+    toggleSortByDate() {
+      // If currently sorting by 'created_at', reverse the direction
+      if (this.sortBy === 'created_at') {
+        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        // If sorting by something else, switch to 'created_at' and default to 'desc'
+        this.sortBy = 'created_at';
+        this.sortDirection = 'desc';
+      }
+      // The `sortedTasks` getter will automatically react to these state changes
+    },
+
+    // Optional: set a specific sort type/direction
+    setSort(field, direction) {
+        this.sortBy = field;
+        this.sortDirection = direction;
+    },
   },
 });

@@ -47,15 +47,17 @@
           </select>
         </div>
         
-        <div>
+         <!-- <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Sort:</label>
           <button
-            @click="toggleSortOrder"
-            class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-semibold text-sm"
+            @click="taskStore.toggleSortByDate" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-semibold text-sm"
           >
-            Date: {{ filters.sortOrder === 'asc' ? 'Oldest First' : 'Newest First' }}
-          </button>
-        </div>
+            Date:
+            <span v-if="taskStore.sortBy === 'created_at'">
+              ({{ taskStore.sortDirection === 'asc' ? 'Oldest First' : 'Newest First' }})
+            </span>
+            <span v-else>Default</span> </button>
+        </div> -->
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">&nbsp;</label>
@@ -107,6 +109,18 @@ const filters = ref({
   sortOrder: 'desc',
 });
 
+const clearFilters = () => {
+  console.log('Clear Filters button clicked!'); // <-- Add this line
+  filters.value.search = '';
+  filters.value.completed = null;
+  filters.value.priority = null;
+  filters.value.startDate = null;
+  filters.value.endDate = null;
+  taskStore.sortBy = 'created_at';
+  taskStore.sortDirection = 'desc';
+  fetchTasksWithFilters();
+};
+
 let debounceTimeout = null;
 
 const fetchTasksWithFilters = () => {
@@ -124,20 +138,12 @@ const debouncedFetchTasks = () => {
   }, 300);
 };
 
-const toggleSortOrder = () => {
-  filters.value.sortOrder = filters.value.sortOrder === 'asc' ? 'desc' : 'asc';
-  fetchTasksWithFilters();
-};
+// const toggleSortOrder = () => {
+//   filters.value.sortOrder = filters.value.sortOrder === 'asc' ? 'desc' : 'asc';
+//   fetchTasksWithFilters();
+// };
 
-const clearFilters = () => {
-  filters.value.search = '';
-  filters.value.completed = null;
-  filters.value.priority = null;
-  filters.value.startDate = null;
-  filters.value.endDate = null;
-  filters.value.sortOrder = 'desc';
-  fetchTasksWithFilters();
-};
+
 
 // --- THIS IS THE CORRECTED PART ---
 // Initial fetch when component is mounted (will call fetchTasksWithFilters directly)
@@ -153,7 +159,9 @@ watch(() => props.userIdFilter, (newVal, oldVal) => {
     filters.value.priority = null;
     filters.value.startDate = null;
     filters.value.endDate = null;
-    filters.value.sortOrder = 'desc';
+    // Reset store's sorting state too
+    taskStore.sortBy = 'created_at';
+    taskStore.sortDirection = 'desc';
     fetchTasksWithFilters(); // Fetch tasks for new user with fresh filters
   }
 }, { immediate: true }); // immediate: true ensures it runs on initial mount as well if userIdFilter is non-null
