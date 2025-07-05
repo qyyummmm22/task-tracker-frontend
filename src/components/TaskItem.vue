@@ -73,6 +73,17 @@
             <div class="flex justify-between items-center text-xs text-gray-500 mb-1">
               <span class="font-medium text-gray-800">{{ comment.commenter_username }}</span>
               <span>{{ formatDate(comment.created_at) }}</span>
+              <!-- NEW: Delete Comment Button -->
+                <button
+                  v-if="comment.user_id === authStore.user?.id || authStore.isAdmin"
+                  @click="openDeleteCommentModal(comment)"
+                  class="text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-full p-1 -mr-1"
+                  title="Delete Comment"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
             </div>
             <p class="text-sm text-gray-700">{{ comment.content }}</p>
           </li>
@@ -187,6 +198,14 @@
     @confirm="handleDeleteTaskConfirm"
     @cancel="closeDeleteTaskModal"
   />
+
+  <!-- NEW: Delete Comment Confirmation Modal -->
+  <ConfirmModal
+    v-if="showDeleteCommentModal"
+    :message='`Are you sure you want to delete this comment?`'
+    @confirm="handleDeleteCommentConfirm"
+    @cancel="closeDeleteCommentModal"
+  />
 </template>
 
 <script setup>
@@ -223,6 +242,10 @@ const downloadLoading = ref(false);
 
 // NEW: State for Delete Task Confirmation Modal
 const showDeleteTaskModal = ref(false);
+
+// NEW: State for Delete Comment Confirmation Modal
+const showDeleteCommentModal = ref(false);
+const commentToDelete = ref(null); // { id: number, content: string }
 
 const openDeleteTaskModal = () => {
   console.log('TaskItem: Delete button clicked! Attempting to open modal for task ID:', props.task.id);
@@ -513,8 +536,52 @@ const addComment = async () => {
   }
 };
 
-// Fetch comments when component is mounted
-onMounted(fetchComments);
+// NEW: Open Delete Comment Modal
+const openDeleteCommentModal = (comment) => {
+  commentToDelete.value = { id: comment.id, content: comment.content };
+  showDeleteCommentModal.value = true;
+};
+
+// NEW: Handle confirmation from delete comment modal
+const handleDeleteCommentConfirm = async () => {
+  if (!commentToDelete.value) return; // Should not happen
+
+  
+
+  try {
+    const response = await fetch(`http://localhost:3000/api/comments/${commentToDelete.value.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`,
+      },
+    });
+
+    if (!response.ok && response.status !== 204) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to delete comment.');
+    }
+
+    // Remove comment from local list
+    comments.value = comments.value.filter(c => c.id !== commentToDelete.value.id);
+    toast.success('Comment deleted successfully!');
+
+    closeDeleteCommentModal(); // Close modal immediately
+    
+  } catch (err) {
+    toast.error(`Delete comment failed: ${err.message}`);
+    console.error('Error deleting comment:', err);
+  } finally {
+    commentToDelete.value = null; // Clear commentToDelete after attempt
+  }
+};
+
+// NEW: Close Delete Comment Modal
+const closeDeleteCommentModal = () => {
+  showDeleteCommentModal.value = false;
+  commentToDelete.value = null;
+};
+
+onMounted(fetchComments); // Fetch comments on mount
 </script>
 
 <style scoped>
