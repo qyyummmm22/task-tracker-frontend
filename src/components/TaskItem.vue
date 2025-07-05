@@ -255,8 +255,9 @@ const openDeleteTaskModal = () => {
 
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    // MODIFIED: Simplify, as backend provides ISO strings with 'Z'
-    const date = new Date(dateString); // <--- SIMPLIFIED
+    // MODIFIED: Append 'Z' if the string doesn't already have a timezone indicator
+    // This forces new Date() to interpret it as UTC.
+    const date = new Date(dateString.endsWith('Z') || dateString.includes('+') ? dateString : `${dateString}Z`); // <--- MODIFIED
     const options = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' };
     return date.toLocaleDateString(undefined, options);
 };
